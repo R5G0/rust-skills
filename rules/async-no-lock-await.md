@@ -1,10 +1,12 @@
 # async-no-lock-await
 
-> Never hold `Mutex`/`RwLock` across `.await`
+> Release synchronous lock guards before await; retain async locks only when the protocol requires it
 
 ## Why It Matters
 
 Holding a lock across an `.await` point can cause deadlocks and severely hurt performance. The task may be suspended while holding the lock, blocking all other tasks waiting for it - potentially indefinitely.
+
+Tokio's async locks permit guards across await when exclusive access is part of an I/O protocol. Use that deliberately: other callers must wait. Extracting a snapshot, awaiting, and reacquiring changes atomicity; if the result depends on unchanged state, compare a version or revalidate before applying it. A synchronous mutex is appropriate for short, low-contention sections without await; a long or contended acquisition can still block an executor worker.
 
 ## Bad
 
@@ -37,7 +39,7 @@ async fn good_update(state: &Mutex<State>) {
     guard.value = data;
 }  // Lock released immediately
 
-// Alternative: Clone data out, process, then update
+    // Alternative: Clone data out, process, then update
 async fn good_update_v2(state: &Mutex<State>) {
     // Extract what we need
     let id = {
@@ -149,5 +151,5 @@ async fn must_await_inside(state: &tokio::sync::Mutex<State>) {
 ## See Also
 
 - [async-spawn-blocking](async-spawn-blocking.md) - Use spawn_blocking for CPU work
-- [async-clone-before-await](async-clone-before-await.md) - Clone data before await
+- [async-clone-before-await](async-clone-before-await.md) - Move handles or take deliberate snapshots
 - [anti-lock-across-await](anti-lock-across-await.md) - Anti-pattern reference

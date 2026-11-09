@@ -4,7 +4,7 @@
 
 ## Why It Matters
 
-Cloning allocates new memory and copies data, while borrowing is free. Unnecessary clones can significantly impact performance, especially in hot paths or with large data structures.
+Borrow when a function only needs temporary access to data. Cloning owned buffers such as `String` or `Vec<T>` can allocate and duplicate their contents, while `Arc::clone` and `Rc::clone` share the same allocation by incrementing a reference count. Avoid unnecessary expensive clones; use ownership or cloning when the lifetime or value semantics require it.
 
 ## Bad
 
@@ -42,7 +42,7 @@ fn count_words(text: &str) -> usize {
 // Borrow in a loop - zero allocations
 fn process_all(items: &[String]) {
     for item in items {
-        handle(item);  // Pass reference
+        println!("{item}");  // Read through a reference
     }
 }
 ```
@@ -50,6 +50,8 @@ fn process_all(items: &[String]) {
 ## When Clone Is Acceptable
 
 ```rust
+use std::collections::HashMap;
+
 // 1. Need owned data for storage
 struct Cache {
     data: HashMap<String, String>,
@@ -62,12 +64,10 @@ impl Cache {
     }
 }
 
-// 2. Need to send across threads
-fn spawn_worker(data: &Config) {
-    let owned = data.clone();  // Clone needed for 'static
-    std::thread::spawn(move || {
-        use_config(owned);
-    });
+// 2. Copy non-static input for thread::spawn; scoped threads can borrow it
+fn spawn_worker(data: &str) -> std::thread::JoinHandle<()> {
+    let owned = data.to_owned();
+    std::thread::spawn(move || println!("{owned}"))
 }
 
 // 3. Copy types (no heap allocation)
@@ -77,16 +77,7 @@ let y = x;  // Copy, not clone - this is fine
 
 ## Evidence
 
-From ripgrep's codebase - uses `Cow` to avoid clones:
-```rust
-// https://github.com/BurntSushi/ripgrep/blob/master/crates/globset/src/pathutil.rs
-pub(crate) fn file_name<'a>(path: &Cow<'a, [u8]>) -> Option<Cow<'a, [u8]>> {
-    match *path {
-        Cow::Borrowed(path) => Cow::Borrowed(&path[last_slash..]),
-        Cow::Owned(ref path) => Cow::Owned(path.clone()),
-    }
-}
-```
+The standard library documents `String::clone` as duplicating its buffer and `Arc::clone` as sharing the existing allocation. The Google Rust Style Guide likewise distinguishes unnecessary deep copies from expected reference-counted pointer clones. Choose based on the operation and ownership contract, rather than treating every `.clone()` as an allocation.
 
 ## See Also
 

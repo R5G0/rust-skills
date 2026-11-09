@@ -118,6 +118,10 @@ let total: i64 = data.iter()
 
 ## See Also
 
+For reusable library APIs, consider returning `impl Iterator<Item = T>` so callers can short-circuit or choose their own collection. Return `Vec<T>` when ownership, random indexing, an existing vector, or typical caller behavior makes it the clearer contract. A lazy iterator also defers computation, side effects, and errors until consumption; choose that behavior deliberately.
+
+Source: [Google Rust Style Guide: iterators versus owned collections](https://google.github.io/styleguide/rustguide.html#iterators-vs-owned-collections-in-return-types).
+
 - [perf-collect-once](./perf-collect-once.md) - Single collect
 - [perf-iter-over-index](./perf-iter-over-index.md) - Prefer iterators
 - [anti-collect-intermediate](./anti-collect-intermediate.md) - Anti-pattern

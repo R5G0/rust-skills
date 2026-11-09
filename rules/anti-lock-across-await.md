@@ -1,10 +1,12 @@
 # anti-lock-across-await
 
-> Don't hold locks across await points
+> Avoid synchronous guards and unnecessary async critical sections across await points
 
 ## Why It Matters
 
-Holding a `Mutex` or `RwLock` guard across an `.await` causes the lock to be held while the task is suspended. Other tasks waiting for the lock block indefinitely. With `std::sync::Mutex`, this is even worse—it can deadlock the entire runtime.
+Holding a lock guard across an `.await` keeps other users waiting while the task is suspended. A synchronous lock can block an executor worker and deadlock when another task needs that worker to release the guard. Async locks can intentionally serialize an I/O protocol across await; choose that contract explicitly rather than treating all guards alike.
+
+The snapshot examples below allow intervening mutations. If a result must match the current state, revalidate under the lock or use a version check before committing it. Releasing and reacquiring a lock is not equivalent to one atomic critical section.
 
 ## Bad
 
@@ -108,8 +110,8 @@ impl BetterService {
 | `tokio::sync::Mutex` guard | Allowed but blocks tasks |
 | `tokio::sync::RwLock` guard | Allowed but blocks tasks |
 | Owned values | Yes |
-| `Arc<T>` | Yes |
-| References | Depends on lifetime |
+| `Arc<T>` | Lifetime-safe; Send requires T: Send + Sync |
+| References | Depends on lifetime and thread-safety bounds |
 
 ## Detection
 
@@ -123,5 +125,5 @@ await_holding_refcell_ref = "deny"
 ## See Also
 
 - [async-no-lock-await](./async-no-lock-await.md) - Async lock patterns
-- [async-clone-before-await](./async-clone-before-await.md) - Clone pattern
+- [async-clone-before-await](./async-clone-before-await.md) - Ownership and deliberate snapshots
 - [own-mutex-interior](./own-mutex-interior.md) - Mutex usage

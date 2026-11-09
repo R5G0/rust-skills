@@ -4,7 +4,7 @@
 
 ## Why It Matters
 
-`Mutex<T>` allows only one thread to access data at a time, even for reads. `RwLock<T>` allows multiple concurrent readers OR one exclusive writer. For read-heavy workloads, this dramatically improves throughput by eliminating unnecessary serialization of read operations.
+`Mutex<T>` serializes readers as well as writers; `RwLock<T>` permits multiple readers or one exclusive writer. Concurrent reads can improve throughput, but reader bookkeeping, contention, and the duration of critical sections affect the result. Benchmark against a mutex for the actual workload rather than choosing solely by the read/write ratio.
 
 ## Bad
 
@@ -46,13 +46,13 @@ fn update_setting(config: &RwLock<Config>, key: &str, value: &str) {
 
 ## parking_lot::RwLock
 
-Prefer `parking_lot::RwLock` for better performance:
+Consider `parking_lot::RwLock` when its upgradable reads, poisoning behavior, or measured performance fit the application:
 
 ```rust
 use parking_lot::RwLock;
-use std::sync::Arc;
+use std::collections::HashMap;
 
-let data = Arc::new(RwLock::new(HashMap::new()));
+let data = RwLock::new(HashMap::<String, String>::new());
 
 // Read - no unwrap needed
 let value = data.read().get("key").cloned();
@@ -60,7 +60,7 @@ let value = data.read().get("key").cloned();
 // Write
 data.write().insert("key".to_string(), "value".to_string());
 
-// Upgradeable read lock (unique to parking_lot)
+// An upgradable read keeps the check and insertion in one lock operation
 let upgradeable = data.upgradable_read();
 if upgradeable.get("key").is_none() {
     let mut write = parking_lot::RwLockUpgradableReadGuard::upgrade(upgradeable);
@@ -72,26 +72,32 @@ if upgradeable.get("key").is_none() {
 
 RwLock has overhead for tracking readers. It can be slower than Mutex when:
 
-| Scenario | Better Choice |
-|----------|---------------|
-| Writes are frequent (>20% of operations) | `Mutex` |
-| Lock held very briefly | `Mutex` |
-| Single-threaded | `RefCell` |
-| Reads dominate, lock held longer | `RwLock` |
+| Scenario | Candidate to evaluate |
+|----------|-----------------------|
+| Writes contend with reads or writes | `Mutex` may be simpler or faster |
+| Very short critical sections | Compare mutex overhead against reader bookkeeping |
+| Single-threaded shared mutation | `RefCell` may suffice |
+| Substantial read sections that can overlap | `RwLock` may benefit from concurrent readers |
 
-## Write Starvation
+## Scheduling and Downgrading
 
-Standard `RwLock` may starve writers if readers are continuous. `parking_lot::RwLock` is fair by default.
+The standard `RwLock` leaves reader/writer priority to the operating system; do not assume a fairness or starvation guarantee. `parking_lot` documents its own locking policy and explicit `unlock_fair` operations, but its default unlocking behavior differs across versions. Check the version in use before relying on a scheduling guarantee, and avoid recursive read locking when writers may be waiting.
+
+`std::sync::RwLockWriteGuard::downgrade` has been stable since Rust 1.92. It atomically converts an exclusive write guard into a shared read guard, preventing another writer from modifying the value between the write and subsequent reads. This controls lock mode, not scheduling fairness.
 
 ```rust
-// parking_lot is writer-fair, preventing starvation
-use parking_lot::RwLock;
+use std::sync::{RwLock, RwLockWriteGuard};
 
-// Or use std with explicit fairness (nightly)
-// #![feature(rwlock_downgrade)]
+let value = RwLock::new(0);
+let mut write = value.write().expect("lock was not poisoned");
+*write = 42;
+let read = RwLockWriteGuard::downgrade(write);
+assert_eq!(*read, 42);
 ```
 
 ## Real-World Pattern: Cached Computation
+
+Computing outside the write lock reduces lock hold time, but concurrent misses can duplicate work. This pattern assumes that computation is repeatable and replacing one result with another is valid. Use an initialization primitive or recheck under a write lock when those assumptions do not hold.
 
 ```rust
 use parking_lot::RwLock;

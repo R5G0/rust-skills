@@ -4,7 +4,7 @@
 
 ## Why It Matters
 
-When you need shared mutable state across threads, `Mutex<T>` provides safe interior mutability with synchronization. Unlike `RefCell`, `Mutex` is `Send + Sync` and uses OS-level locking to ensure only one thread can access the data at a time.
+When shared mutable state must cross thread boundaries, `Mutex<T>` serializes access through a lock guard. `Mutex<T>` is `Send` and `Sync` when `T: Send`; unlike `RwLock<T>`, it does not require `T: Sync` to share the mutex. `RefCell<T>` alone cannot synchronize access between threads.
 
 ## Bad
 
@@ -57,7 +57,7 @@ let mutex = Arc::new(Mutex::new(0));
 match mutex.lock() {
     Ok(guard) => println!("Value: {}", *guard),
     Err(poisoned) => {
-        // Recover the data anyway
+        // Recover only after deciding the protected invariants still hold
         let guard = poisoned.into_inner();
         println!("Recovered value: {}", *guard);
     }
@@ -67,9 +67,9 @@ match mutex.lock() {
 let guard = mutex.lock().unwrap_or_else(|e| e.into_inner());
 ```
 
-## Prefer parking_lot::Mutex
+## Consider parking_lot::Mutex
 
-For better performance, consider `parking_lot::Mutex`:
+`parking_lot::Mutex` offers different poisoning, locking, and footprint behavior. Compare it against `std::sync::Mutex` for the target workload rather than assuming a universal speed advantage:
 
 ```rust
 use parking_lot::Mutex;
@@ -83,11 +83,14 @@ data.push(42);
 // Lock automatically released when guard drops
 ```
 
-Benefits of `parking_lot`:
-- No poisoning (returns guard directly)
-- Smaller size (1 byte vs 40+ bytes)
-- Better performance under contention
-- Fair locking option available
+Relevant differences:
+
+- No poisoning: `lock()` returns a guard directly instead of a `LockResult`.
+- Its raw mutex uses one byte of lock state; the complete `Mutex<T>` also contains `T` and any padding. Standard-library mutex layout varies with platform and toolchain, so compare `size_of::<Mutex<T>>()` for the actual types and target.
+- Contended and uncontended performance depend on workload and platform; benchmark before switching for speed.
+- Explicit fair unlocking is available. Default fairness behavior depends on the `parking_lot` version; consult its documentation.
+
+Changing from the standard mutex requires reviewing poisoning recovery, return types, and scheduling assumptions; it is not a drop-in semantic replacement.
 
 ## When to Use What
 
@@ -96,7 +99,7 @@ Benefits of `parking_lot`:
 | `RefCell<T>` | Single | Minimal | Interior mutability, same thread |
 | `Mutex<T>` | Multi | Locking | Shared mutable state across threads |
 | `RwLock<T>` | Multi | Locking | Many readers, few writers |
-| `parking_lot::Mutex` | Multi | Less | Drop-in std::Mutex replacement |
+| `parking_lot::Mutex` | Multi | Workload-dependent | Alternative with no poisoning and explicit fair unlocking |
 
 ## See Also
 

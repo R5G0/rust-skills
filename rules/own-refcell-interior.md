@@ -93,7 +93,7 @@ Use `try_borrow()` and `try_borrow_mut()` for fallible borrowing.
 
 ## Cell for Copy Types
 
-For simple `Copy` values, `Cell<T>` is lighter than `RefCell<T>` — no runtime borrow flags, no panics. You `get()`/`set()`/`replace()` the value instead of borrowing it:
+For simple `Copy` values, `Cell<T>` supports `get()`/`set()`/`replace()` without runtime borrow-conflict checks. This avoids `RefCell` borrowing panics, but arithmetic and other operations can still panic. Choose an explicit overflow policy for counters; this example saturates at `u32::MAX`:
 
 ```rust
 use std::cell::Cell;
@@ -104,7 +104,7 @@ struct Counter {
 
 impl Counter {
     fn bump(&self) {
-        self.count.set(self.count.get() + 1); // mutate through &self, never panics
+        self.count.set(self.count.get().saturating_add(1)); // saturate on overflow
     }
 }
 ```

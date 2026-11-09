@@ -1,30 +1,28 @@
 # async-cancel-safety
 
-> Ensure futures used in `tokio::select!` branches are cancellation-safe
+> Preserve progress and deadlines when select branches are cancelled and restarted
 
 ## Why It Matters
 
-`tokio::select!` polls multiple futures concurrently and, the moment one branch completes, it **drops every other branch** — including any state those futures held. A future that was halfway through reading bytes into a local buffer, or halfway through draining a channel into a `Vec`, loses that progress silently. This is not a compiler error; it compiles fine and the bug only surfaces under concurrent load. Tokio documents which of its primitives are cancellation-safe; everything else must be treated with care.
+When a `tokio::select!` branch wins, the other branch futures are dropped. State owned by those futures is lost; external effects already performed are not rolled back. Keeping a buffer outside the future is insufficient if the progress cursor is still inside it. Review whether dropping and recreating each pending operation preserves the protocol, including queue position and deadlines.
 
 ## Bad
 
 ```rust
-use tokio::io::{AsyncReadExt, BufReader};
-use tokio::net::TcpStream;
-use tokio::sync::mpsc;
+use tokio::{io::AsyncReadExt, net::TcpStream, sync::mpsc};
 
-// Non-cancel-safe: `read_exact` owns an internal buffer inside the future.
-// If select! drops this branch, the partially-read bytes are gone.
-async fn bad_example(stream: &mut BufReader<TcpStream>, rx: &mut mpsc::Receiver<u8>) {
-    let mut buf = [0u8; 1024];
-    tokio::select! {
-        // BUG: if the `recv` branch fires first, the bytes already read
-        // into buf inside `read_exact` are silently discarded
-        result = stream.read_exact(&mut buf) => {
-            println!("read {} bytes", result.unwrap());
-        }
-        msg = rx.recv() => {
-            println!("got message: {:?}", msg);
+async fn receive(stream: &mut TcpStream, rx: &mut mpsc::Receiver<u8>) {
+    let mut packet = [0_u8; 64];
+    loop {
+        tokio::select! {
+            result = stream.read_exact(&mut packet) => {
+                if result.is_err() { break; }
+            }
+            message = rx.recv() => {
+                if message.is_none() { break; }
+                // read_exact may have consumed bytes into packet.
+                // Recreating it starts its internal cursor at zero.
+            }
         }
     }
 }
@@ -33,80 +31,82 @@ async fn bad_example(stream: &mut BufReader<TcpStream>, rx: &mut mpsc::Receiver<
 ## Good
 
 ```rust
-use tokio::io::{AsyncReadExt, BufReader};
-use tokio::net::TcpStream;
-use tokio::sync::mpsc;
+use tokio::{io::AsyncReadExt, net::TcpStream, sync::mpsc};
 
-// Cancel-safe: the buffer lives OUTSIDE the select loop.
-// If the recv branch fires, buf retains whatever was already read,
-// and the next iteration continues filling it.
-async fn good_example(
-    stream: &mut BufReader<TcpStream>,
-    rx: &mut mpsc::Receiver<u8>,
-) -> std::io::Result<()> {
-    let mut buf = [0u8; 1024];
+async fn receive(stream: &mut TcpStream, rx: &mut mpsc::Receiver<u8>) -> std::io::Result<()> {
+    let mut packet = [0_u8; 64];
     let mut filled = 0;
-
     loop {
         tokio::select! {
-            n = stream.read(&mut buf[filled..]) => {
-                // `read` (not `read_exact`) is cancel-safe: it either
-                // reads some bytes or returns immediately with 0.
-                filled += n?;
-                if filled == buf.len() {
-                    println!("buffer full: {:?}", &buf[..]);
+            result = stream.read(&mut packet[filled..]) => {
+                let count = result?;
+                if count == 0 {
+                    return if filled == 0 { Ok(()) } else {
+                        Err(std::io::Error::new(std::io::ErrorKind::UnexpectedEof, "incomplete packet"))
+                    };
+                }
+                filled += count;
+                if filled == packet.len() {
+                    println!("packet: {packet:?}");
                     filled = 0;
                 }
             }
-            msg = rx.recv() => {
-                println!("got message: {:?}", msg);
+            message = rx.recv() => {
+                if message.is_none() { return Ok(()); }
             }
         }
     }
 }
 ```
 
-## What Is and Is Not Cancel-Safe
+Here `read` reports each completed chunk and the surrounding scope retains the cursor. Channel closure and EOF terminate the loop instead of repeatedly polling an immediately ready branch.
 
-| Operation | Cancel-safe? | Notes |
-|---|---|---|
-| `mpsc::Receiver::recv()` | Yes | drops nothing on cancel |
-| `broadcast::Receiver::recv()` | Yes | position tracked in receiver |
-| `watch::Receiver::changed()` | Yes | no data consumed on cancel |
-| `oneshot::Receiver` | Yes | message remains in channel |
-| `tokio::time::sleep` | Yes | timer resets cleanly |
-| `AsyncRead::read()` | Yes | partial reads surfaced to caller |
-| `AsyncRead::read_exact()` | **No** | partially filled buffer is lost |
-| `AsyncRead::read_to_end()` | **No** | accumulation is inside the future |
-| `Mutex::lock()` | Yes | lock not acquired if dropped |
-| collecting into a `Vec` inside a future | **No** | partial state is inside the future |
+## Keep Deadlines Outside the Loop
 
-## Patterns for Non-Cancel-Safe Operations
-
-1. **Move state outside `select!`** — keep the accumulation buffer or partial result as a local variable in the surrounding scope, not inside the future passed to `select!`.
-
-2. **Use a pinned future held across iterations** — pin the future once and reuse it:
+Creating `sleep(duration)` on every iteration postpones the timeout whenever another branch wins. For a deadline covering the whole operation, create and pin one timer. Reset it only when an inactivity timeout is intended.
 
 ```rust
-use std::pin::pin;
-use tokio::io::AsyncReadExt;
+use std::time::Duration;
+use tokio::sync::mpsc;
 
-async fn pinned_read_example<R: AsyncReadExt + Unpin>(mut reader: R) {
-    let mut buf = vec![0u8; 64];
-    // pin the future so it survives across select iterations
-    let read_fut = pin!(reader.read_to_end(&mut buf));
-    // ... use read_fut inside select! across multiple iterations
-    // When the future completes it won't be cancelled mid-way
-    let _ = read_fut.await;
+async fn receive_until_deadline(mut rx: mpsc::Receiver<u8>, duration: Duration) {
+    let deadline = tokio::time::sleep(duration);
+    tokio::pin!(deadline);
+    loop {
+        tokio::select! {
+            _ = &mut deadline => break,
+            message = rx.recv() => match message {
+                Some(value) => println!("message: {value}"),
+                None => break,
+            }
+        }
+    }
 }
 ```
 
-3. **Use `tokio_util::io::poll_read_buf`** or similar cancel-safe adapters from `tokio-util`.
+Pinning preserves a future's location so a pending future can be polled again through a mutable reference. Moving a `Pin<Box<F>>` handle does not move the pinned `F`. Pinning does not make dropping that future cancellation-safe, and a completed future must not be polled again unless its API explicitly permits it.
 
-4. **Wrap in a `JoinHandle`** — spawn the operation as a task; the task keeps running even if `select!` drops the handle, and the handle itself is cancel-safe.
+## Operation Contracts
+
+| Operation | Effect of cancelling and recreating |
+|---|---|
+| `mpsc::Receiver::recv`, `broadcast::Receiver::recv`, `watch::Receiver::changed` | Documented cancellation-safe |
+| `AsyncReadExt::read`, `read_buf` | Documented cancellation-safe; keep completed data externally |
+| `read_exact`, `read_to_end`, `read_to_string`, `write_all` | Partial I/O may have occurred; restarting can lose protocol progress |
+| `Mutex::lock`, `RwLock::read`/`write`, `Semaphore::acquire` | Cancellation loses queue position; repeated retries may starve |
+| `sleep(duration)` | Dropping cancels this timer; recreating starts a new deadline |
+| `&mut JoinHandle<T>` | Losing the select does not cancel the task or consume its result |
+
+To preserve an operation, create and pin it once outside the loop and select on `&mut future`. When it completes, stop polling it. If using a spawned task, retain its handle and define its shutdown behavior: dropping an owned `JoinHandle` detaches the task rather than aborting it. Cancellation can be intentional during shutdown, but must not silently corrupt an ongoing protocol.
+
+## Sources
+
+- [Tokio select cancellation safety](https://docs.rs/tokio/latest/tokio/macro.select.html#cancellation-safety)
+- [Google Comprehensive Rust: cancellation](https://google.github.io/comprehensive-rust/concurrency/async-pitfalls/cancellation.html)
+- [Google Comprehensive Rust: pinning](https://google.github.io/comprehensive-rust/concurrency/async-pitfalls/pin.html)
 
 ## See Also
 
-- [async-select-racing](async-select-racing.md) - use `tokio::select!` for racing/timeouts
-- [async-bounded-channel](async-bounded-channel.md) - use bounded channels for backpressure
-- [async-no-lock-await](async-no-lock-await.md) - never hold locks across `.await`
+- [async-select-racing](async-select-racing.md) - Racing futures and timeouts
+- [async-joinset-structured](async-joinset-structured.md) - Task lifecycle
+- [async-cancellation-token](async-cancellation-token.md) - Cooperative shutdown

@@ -4,7 +4,7 @@
 
 ## Why It Matters
 
-Defaulting to `SeqCst` (sequentially consistent) on every atomic is a common correctness-first shortcut, but it carries real cost: on x86 the difference is small, but on ARM and RISC-V weaker orderings map to cheaper instructions while `SeqCst` requires full memory barriers. More importantly, choosing the wrong ordering — even a weaker one — is a correctness bug that causes data races the compiler won't catch. Understanding the four practical levels lets you write both correct and efficient concurrent code.
+Memory ordering is part of a synchronization protocol. `SeqCst` is a reasonable conservative starting point, but it cannot repair an invalid ownership or publication protocol. Weaken an ordering only after proving that the required happens-before relationships remain valid; performance differences depend on the operation and target architecture.
 
 ## Bad
 
@@ -13,21 +13,21 @@ use std::sync::atomic::{AtomicU64, AtomicBool, Ordering};
 
 static COUNTER: AtomicU64 = AtomicU64::new(0);
 static READY: AtomicBool = AtomicBool::new(false);
-static mut DATA: u64 = 0;
+static DATA: AtomicU64 = AtomicU64::new(0);
 
-// SeqCst everywhere — correct, but unnecessarily expensive
+// The independent counter does not need ordering with other memory.
 fn increment() {
     COUNTER.fetch_add(1, Ordering::SeqCst);
 }
 
 fn producer() {
-    unsafe { DATA = 42; }
+    DATA.store(42, Ordering::SeqCst);
     READY.store(true, Ordering::SeqCst); // overkill for a single flag
 }
 
 fn consumer() -> Option<u64> {
     if READY.load(Ordering::SeqCst) {
-        Some(unsafe { DATA })
+        Some(DATA.load(Ordering::SeqCst))
     } else {
         None
     }
@@ -68,11 +68,13 @@ fn consumer() -> Option<u64> {
     }
 }
 
-// SeqCst: only when you need a single total order across *multiple* atomics.
+// SeqCst adds a total order over SeqCst operations.
 // Example: Dekker-style mutual exclusion involving two independent flags.
 ```
 
 ## Ordering Quick Reference
+
+The publication example assumes one publication and no later writes to the payload. Repeated producers need an additional protocol if the reader must identify a particular payload version; a permanently true readiness flag does not provide that guarantee. Atomic payloads avoid a data race, but do not make compound state transitions atomic.
 
 | Ordering | Use when |
 |----------|----------|
@@ -101,6 +103,7 @@ fn test_handoff() {
 
 ## See Also
 
+- [conc-atomic-update](conc-atomic-update.md) - replace hand-written compare-exchange retry loops
 - [own-mutex-interior](own-mutex-interior.md) - prefer `Mutex<T>` when lock-free isn't required
 - [test-loom-concurrency](test-loom-concurrency.md) - exhaustively test concurrent code with loom
 - [conc-scoped-threads](conc-scoped-threads.md) - safely share stack data across threads

@@ -1,7 +1,5 @@
 anti-format-hot-path.md :: When format! Is Fine :: E0308
 anti-lock-across-await.md :: Pattern: Clone Before Await :: E0107
-anti-over-abstraction.md :: Prefer Concrete Types in Private Code :: E0428
-anti-over-abstraction.md :: Rule of Three :: E0107
 anti-premature-optimize.md :: When to Optimize :: E0308
 anti-stringly-typed.md :: Good :: E0308
 anti-type-erasure.md :: impl Trait Positions :: E0107
@@ -12,16 +10,12 @@ api-builder-pattern.md :: Builder Variations :: E0428
 api-common-traits.md :: Manual Implementations :: E0404
 api-default-impl.md :: Builder with Default :: E0599
 api-extension-trait.md :: Ecosystem Examples :: E0599
-api-extension-trait.md :: Scoped Extensions :: P:expected item, found keyword `let`
 api-from-not-into.md :: Blanket Implementation :: E0210,P:non-item in item list
 api-impl-asref.md :: AsRef vs Into vs Borrow :: E0106,E0404
 api-impl-asref.md :: Common AsRef Implementations :: E0117,P:non-item in item list
 api-impl-asref.md :: Pattern: Optional AsRef Bound :: E0428
-api-impl-into.md :: Implement From, Not Into :: E0119
-api-impl-into.md :: When NOT to Use impl Into :: E0562
-api-must-use.md :: When to Apply :: P:expected one of `->`, `<`,,P:missing parameters for function definition
 api-newtype-safety.md :: Constructor Patterns :: E0204
-api-newtype-safety.md :: Good :: E0063,E0308
+api-newtype-safety.md :: Good :: E0308
 api-newtype-safety.md :: Zero-Cost Abstraction :: E0308
 api-sealed-trait.md :: Full Pattern :: P:missing `fn` or `struct` for,P:non-item in item list
 api-serde-optional.md :: Multiple Optional Dependencies :: P:expected `;`, found `#`,P:expected `;`, found `borsh`,P:expected `;`, found `default`,P:expected `;`, found `rkyv`,P:expected `;`, found `serde`,P:expected one of `.`, `;`,
@@ -31,7 +25,6 @@ async-bounded-channel.md :: Worker Pool Pattern :: E0107
 async-cancellation-token.md :: CancellationToken API :: E0069
 async-cancellation-token.md :: Graceful Shutdown Pattern :: E0107,E0752
 async-cancellation-token.md :: Hierarchical Cancellation :: E0277
-async-fn-in-trait.md :: Caveats :: P:expected one of `!` or
 async-join-parallel.md :: Good :: E0107
 async-join-parallel.md :: Limiting Concurrency :: E0107
 async-join-parallel.md :: When NOT to Use join! :: E0107
@@ -95,13 +88,11 @@ name-type-param-single.md :: Trait Bounds :: E0404,E0428,P:free function without
 name-types-camel.md :: Good :: P:non-item in item list
 opt-cache-friendly.md :: Avoid Pointer Chasing :: E0308
 opt-inline-never-cold.md :: Pattern: Extract Cold Code :: E0428
-own-clone-explicit.md :: When to Avoid Clone :: E0428
 own-lifetime-elision.md :: Common Patterns :: P:expected one of `!`, `(`,
 own-lifetime-elision.md :: The Three Elision Rules :: P:expected one of `!`, `(`,
 own-lifetime-elision.md :: The Three Elision Rules :: P:expected one of `->`, `where`,
 own-move-large.md :: Good :: E0599
 own-refcell-interior.md :: Good :: E0599
-own-slice-over-vec.md :: Path Types Too :: E0428
 perf-chain-avoid.md :: When Chain Is Fine :: E0106
 perf-extend-batch.md :: Good :: E0107
 perf-extend-batch.md :: Pattern: Building Strings :: E0428

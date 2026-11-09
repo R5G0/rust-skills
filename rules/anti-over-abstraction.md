@@ -1,120 +1,93 @@
 # anti-over-abstraction
 
-> Don't over-abstract with excessive generics
+> Introduce traits and generics for a real abstraction boundary rather than speculative flexibility
 
 ## Why It Matters
 
-Generics and traits are powerful but come at a cost: compile times, binary size, and cognitive load. Over-abstraction—making everything generic "for flexibility"—often adds complexity without benefit. Start concrete; generalize when you have real use cases.
+Traits support polymorphism, generic algorithms, and extension methods, but also create contracts that must be understood and maintained. An inherent implementation is often clearer for behavior belonging to one concrete type. Choose an abstraction because it serves callers or separates a real boundary, not to meet an arbitrary count of implementations.
 
 ## Bad
 
 ```rust
-// Overly generic for a simple function
-fn add<T, U, R>(a: T, b: U) -> R
-where
-    T: Into<R>,
-    U: Into<R>,
-    R: std::ops::Add<Output = R>,
-{
-    a.into() + b.into()
+struct Counter(u32);
+
+// No callers need a trait bound, trait object, or extension method here.
+trait CounterOperations {
+    fn value(&self) -> u32;
 }
 
-// Just call add(1, 2) - why make it this complex?
-
-// Trait explosion
-trait Readable {}
-trait Writable {}
-trait ReadWritable: Readable + Writable {}
-trait AsyncReadable {}
-trait AsyncWritable {}
-trait AsyncReadWritable: AsyncReadable + AsyncWritable {}
-
-// Abstract factory pattern (Java flashback)
-trait Factory<T> {
-    fn create(&self) -> T;
+impl CounterOperations for Counter {
+    fn value(&self) -> u32 {
+        self.0
+    }
 }
-trait FactoryFactory<F: Factory<T>, T> {
-    fn create_factory(&self) -> F;
+
+fn main() {
+    let counter = Counter(3);
+    assert_eq!(counter.value(), 3);
 }
 ```
 
 ## Good
 
 ```rust
-// Concrete implementation - clear and simple
-fn add_i32(a: i32, b: i32) -> i32 {
-    a + b
+struct Counter(u32);
+
+impl Counter {
+    fn value(&self) -> u32 {
+        self.0
+    }
 }
 
-// Generic when actually needed (e.g., library code)
-fn add<T: std::ops::Add<Output = T>>(a: T, b: T) -> T {
-    a + b
+fn main() {
+    let counter = Counter(3);
+    assert_eq!(counter.value(), 3);
 }
-
-// Simple traits for actual polymorphism needs
-trait Storage {
-    fn save(&self, key: &str, value: &[u8]) -> Result<(), Error>;
-    fn load(&self, key: &str) -> Result<Vec<u8>, Error>;
-}
-
-// Concrete types first
-struct FileStorage { path: PathBuf }
-struct MemoryStorage { data: HashMap<String, Vec<u8>> }
 ```
 
-## Signs of Over-Abstraction
-
-| Sign | Symptom |
-|------|---------|
-| Single implementation | Generic trait with only one impl |
-| Type parameter soup | `T, U, V, W` everywhere |
-| Marker traits | Traits with no methods |
-| Deep trait bounds | `where T: A + B + C + D + E` |
-| Phantom generics | Type parameters not used meaningfully |
-
-## When to Generalize
-
-Generalize when:
-- You have 2+ concrete types that share behavior
-- You're writing library code for public consumption
-- Performance requires static dispatch
-- The abstraction simplifies the API
-
-Don't generalize when:
-- You "might need it later" (YAGNI)
-- Only one type will ever implement it
-- It makes code harder to understand
-
-## Rule of Three
-
-Wait until you have three similar concrete implementations before abstracting:
+A library algorithm can justify a trait bound directly through what it does:
 
 ```rust
-// Version 1: Just FileStorage
-struct FileStorage { /* ... */ }
+use std::io::{self, Read, Write};
 
-// Version 2: Added MemoryStorage, similar interface
-struct MemoryStorage { /* ... */ }
+fn copy_header(input: impl Read, mut output: impl Write) -> io::Result<u64> {
+    io::copy(&mut input.take(8), &mut output)
+}
 
-// Version 3: Now Redis too - time to abstract
-trait Storage {
-    fn save(&self, key: &str, value: &[u8]) -> Result<()>;
-    fn load(&self, key: &str) -> Result<Vec<u8>>;
+fn main() -> io::Result<()> {
+    let mut output = Vec::new();
+    let copied = copy_header(&b"header12body"[..], &mut output)?;
+    assert_eq!(copied, 8);
+    assert_eq!(output, b"header12");
+    Ok(())
 }
 ```
 
-## Prefer Concrete Types in Private Code
+## Decide from the Boundary
 
-```rust
-// Internal function - concrete type is fine
-fn process_orders(db: &PostgresDb, orders: Vec<Order>) { }
+Traits are useful for generic algorithms, dynamic dispatch, extension methods,
+and substitutable implementations at an actual integration or testing boundary.
+One current implementation can still justify a trait when the caller needs one
+of those capabilities. Marker traits and associated-type contracts can also be
+intentional, even without methods.
 
-// Public API - might benefit from abstraction
-pub fn process_orders<S: Storage>(storage: &S, orders: Vec<Order>) { }
-```
+Repeated concrete implementations can reveal an abstraction, but neither two
+nor three implementations is a prerequisite. Similar-looking code need not
+share a domain contract. Avoid traits used only to divide one type's inherent
+methods into arbitrary groups.
+
+Reusable libraries may anticipate credible caller needs. Application and private
+code can usually stay concrete until broader flexibility improves an actual use
+case. A public function alone does not require a generic parameter, and private
+code can still legitimately need polymorphism.
+
+## Sources
+
+- [Google Rust Style Guide](https://google.github.io/styleguide/rustguide.html) — API context and trait versus inherent implementation
+- [Rust API Guidelines](https://rust-lang.github.io/api-guidelines/) — deliberate public contracts
 
 ## See Also
 
-- [type-generic-bounds](./type-generic-bounds.md) - Minimal bounds
-- [api-sealed-trait](./api-sealed-trait.md) - Controlled extension
-- [anti-type-erasure](./anti-type-erasure.md) - When Box<dyn> is wrong
+- [type-generic-bounds](type-generic-bounds.md) - require only capabilities an algorithm uses
+- [api-extension-trait](api-extension-trait.md) - add methods to types from another crate
+- [trait-dyn-vs-generic](trait-dyn-vs-generic.md) - choose the necessary dispatch mechanism

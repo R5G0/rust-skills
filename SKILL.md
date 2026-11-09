@@ -1,7 +1,7 @@
 ---
 name: rust-skills
 description: >
-  Comprehensive Rust coding guidelines with 265 rules across 26 categories.
+  Comprehensive Rust coding guidelines with 273 rules across 26 categories.
   Use when writing, reviewing, or refactoring Rust code. Covers ownership,
   error handling, async patterns, concurrency, unsafe code, API design, memory
   optimization, performance, numeric safety, conversions, serde, pattern
@@ -10,18 +10,19 @@ description: >
 license: MIT
 metadata:
   author: leonardomso
-  version: "1.5.1"
+  version: "1.5.1+fork.1"
   sources:
     - Rust API Guidelines
     - Rust Performance Book
     - Rust 2024 Edition Guide
     - The Rustonomicon
+    - Google Rust Style Guide and Comprehensive Rust
     - ripgrep, tokio, serde, polars, axum, cargo codebases
 ---
 
 # Rust Best Practices
 
-Comprehensive guide for writing high-quality, idiomatic, and highly optimized Rust code. Contains 265 rules across 26 categories, prioritized by impact to guide LLMs in code generation and refactoring. Current for Rust 1.96 (2024 edition).
+Comprehensive guide for writing high-quality, idiomatic, and highly optimized Rust code. Contains 273 rules across 26 categories, prioritized by impact to guide LLMs in code generation and refactoring. Examples checked with Rust 1.97.1 (2024 edition); respect each project's MSRV.
 
 ## When to Apply
 
@@ -45,15 +46,15 @@ Reference these guidelines when:
 | 4 | Unsafe Code | CRITICAL | `unsafe-` | 7 |
 | 5 | API Design | HIGH | `api-` | 17 |
 | 6 | Async/Await | HIGH | `async-` | 18 |
-| 7 | Concurrency | HIGH | `conc-` | 4 |
+| 7 | Concurrency | HIGH | `conc-` | 5 |
 | 8 | Compiler Optimization | HIGH | `opt-` | 12 |
-| 9 | Numeric & Arithmetic Safety | HIGH | `num-` | 5 |
-| 10 | Type Safety | MEDIUM | `type-` | 13 |
-| 11 | Trait & Generics Design | MEDIUM | `trait-` | 6 |
+| 9 | Numeric & Arithmetic Safety | HIGH | `num-` | 6 |
+| 10 | Type Safety | MEDIUM | `type-` | 15 |
+| 11 | Trait & Generics Design | MEDIUM | `trait-` | 7 |
 | 12 | Conversions | MEDIUM | `conv-` | 3 |
 | 13 | Const & Compile-Time | MEDIUM | `const-` | 4 |
 | 14 | Serde | MEDIUM | `serde-` | 8 |
-| 15 | Pattern Matching | MEDIUM | `pat-` | 5 |
+| 15 | Pattern Matching | MEDIUM | `pat-` | 6 |
 | 16 | Macros | MEDIUM | `macro-` | 8 |
 | 17 | Closures | MEDIUM | `closure-` | 5 |
 | 18 | Collections | MEDIUM | `coll-` | 4 |
@@ -62,8 +63,8 @@ Reference these guidelines when:
 | 21 | Documentation | MEDIUM | `doc-` | 12 |
 | 22 | Observability | MEDIUM | `obs-` | 7 |
 | 23 | Performance Patterns | MEDIUM | `perf-` | 13 |
-| 24 | Project Structure | LOW | `proj-` | 14 |
-| 25 | Clippy & Linting | LOW | `lint-` | 13 |
+| 24 | Project Structure | LOW | `proj-` | 15 |
+| 25 | Clippy & Linting | LOW | `lint-` | 14 |
 | 26 | Anti-patterns | REFERENCE | `anti-` | 15 |
 
 ---
@@ -123,7 +124,7 @@ Reference these guidelines when:
 ### 4. Unsafe Code (CRITICAL)
 
 - [`unsafe-safety-comment`](rules/unsafe-safety-comment.md) - Write a `// SAFETY:` comment above every `unsafe` block and a `# Safety` section in every `unsafe fn`.
-- [`unsafe-minimize-scope`](rules/unsafe-minimize-scope.md) - Keep `unsafe` blocks as small as possible — mark only the operation that requires unsafety, not the surrounding safe code.
+- [`unsafe-minimize-scope`](rules/unsafe-minimize-scope.md) - Keep unsafe operations narrowly scoped and expose safe APIs only when their invariants are enforced
 - [`unsafe-miri-ci`](rules/unsafe-miri-ci.md) - Run `cargo miri test` in CI for every crate that contains `unsafe` code.
 - [`unsafe-maybeuninit`](rules/unsafe-maybeuninit.md) - Use `MaybeUninit<T>` for uninitialized memory; never use `mem::uninitialized()` or `mem::zeroed()` for types with validity invariants.
 - [`unsafe-extern-block`](rules/unsafe-extern-block.md) - In Rust 2024, wrap `extern` blocks in `unsafe extern { }` and annotate each item as `safe` or `unsafe`.
@@ -139,9 +140,9 @@ Reference these guidelines when:
 - [`api-sealed-trait`](rules/api-sealed-trait.md) - Use sealed traits to prevent external implementations while allowing use
 - [`api-extension-trait`](rules/api-extension-trait.md) - Use extension traits to add methods to external types
 - [`api-parse-dont-validate`](rules/api-parse-dont-validate.md) - Parse into validated types at boundaries
-- [`api-impl-into`](rules/api-impl-into.md) - Accept `impl Into<T>` for flexible APIs, implement `From<T>` for conversions
+- [`api-impl-into`](rules/api-impl-into.md) - Consider `impl Into<T>` for useful owned-input conversions and implement `From<T>` for conversion types
 - [`api-impl-asref`](rules/api-impl-asref.md) - Use `AsRef<T>` when you only need to borrow the inner data
-- [`api-must-use`](rules/api-must-use.md) - Mark types and functions with `#[must_use]` when ignoring results is likely a bug
+- [`api-must-use`](rules/api-must-use.md) - Mark types and functions with `#[must_use]` when ignoring their results is likely a bug
 - [`api-non-exhaustive`](rules/api-non-exhaustive.md) - Use `#[non_exhaustive]` on public enums and structs for forward compatibility
 - [`api-from-not-into`](rules/api-from-not-into.md) - Implement `From<T>`, not `Into<U>` - From gives you Into for free
 - [`api-default-impl`](rules/api-default-impl.md) - Implement `Default` for types with sensible default values
@@ -153,7 +154,7 @@ Reference these guidelines when:
 ### 6. Async/Await (HIGH)
 
 - [`async-tokio-runtime`](rules/async-tokio-runtime.md) - Configure Tokio runtime appropriately for your workload
-- [`async-no-lock-await`](rules/async-no-lock-await.md) - Never hold `Mutex`/`RwLock` across `.await`
+- [`async-no-lock-await`](rules/async-no-lock-await.md) - Release synchronous lock guards before await; retain async locks only when the protocol requires it
 - [`async-spawn-blocking`](rules/async-spawn-blocking.md) - Use `spawn_blocking` for CPU-intensive work
 - [`async-tokio-fs`](rules/async-tokio-fs.md) - Use `tokio::fs` instead of `std::fs` in async code
 - [`async-cancellation-token`](rules/async-cancellation-token.md) - Use `CancellationToken` for graceful shutdown and task cancellation
@@ -166,10 +167,10 @@ Reference these guidelines when:
 - [`async-watch-latest`](rules/async-watch-latest.md) - Use `watch` channel for sharing the latest value with multiple observers
 - [`async-oneshot-response`](rules/async-oneshot-response.md) - Use `oneshot` channel for request-response patterns
 - [`async-joinset-structured`](rules/async-joinset-structured.md) - Use `JoinSet` for managing dynamic collections of spawned tasks
-- [`async-clone-before-await`](rules/async-clone-before-await.md) - Clone Arc/Rc data before await points to avoid holding references across suspension
-- [`async-fn-in-trait`](rules/async-fn-in-trait.md) - Use native `async fn` in traits (stable 1.75) instead of the `async_trait` macro
+- [`async-clone-before-await`](rules/async-clone-before-await.md) - Move existing owned handles across await; clone only when another owner or a snapshot is needed
+- [`async-fn-in-trait`](rules/async-fn-in-trait.md) - Prefer native async trait methods for static dispatch; use boxed futures when dynamic dispatch is needed
 - [`async-async-fn-bounds`](rules/async-async-fn-bounds.md) - Use `AsyncFn`/`AsyncFnMut`/`AsyncFnOnce` bounds instead of `F: Fn() -> Fut, Fut: Future`
-- [`async-cancel-safety`](rules/async-cancel-safety.md) - Ensure futures used in `tokio::select!` branches are cancellation-safe
+- [`async-cancel-safety`](rules/async-cancel-safety.md) - Preserve progress and deadlines when select branches are cancelled and restarted
 
 ### 7. Concurrency (HIGH)
 
@@ -177,6 +178,7 @@ Reference these guidelines when:
 - [`conc-scoped-threads`](rules/conc-scoped-threads.md) - Use `std::thread::scope` to borrow stack data across threads
 - [`conc-atomic-ordering`](rules/conc-atomic-ordering.md) - Use the weakest correct memory `Ordering` for every atomic operation
 - [`conc-thread-local`](rules/conc-thread-local.md) - Prefer `thread_local!` with `Cell`/`RefCell` over `static mut`
+- [`conc-atomic-update`](rules/conc-atomic-update.md) - Use atomic `update` / `try_update` instead of hand-written compare-exchange loops
 
 ### 8. Compiler Optimization (HIGH)
 
@@ -184,7 +186,7 @@ Reference these guidelines when:
 - [`opt-inline-always-rare`](rules/opt-inline-always-rare.md) - Use `#[inline(always)]` sparingly—only for critical hot paths proven by profiling
 - [`opt-inline-never-cold`](rules/opt-inline-never-cold.md) - Use `#[inline(never)]` and `#[cold]` for error paths and rarely-executed code
 - [`opt-cold-unlikely`](rules/opt-cold-unlikely.md) - Mark unlikely code paths with `#[cold]` to help compiler optimization
-- [`opt-likely-hint`](rules/opt-likely-hint.md) - Use code structure to hint at likely branches; use intrinsics on nightly
+- [`opt-likely-hint`](rules/opt-likely-hint.md) - Add branch hints only for measured hot paths; distinguish stable cold hints from nightly intrinsics
 - [`opt-lto-release`](rules/opt-lto-release.md) - Enable LTO in release builds
 - [`opt-codegen-units`](rules/opt-codegen-units.md) - Set `codegen-units = 1` for maximum optimization in release builds
 - [`opt-pgo-profile`](rules/opt-pgo-profile.md) - Use Profile-Guided Optimization (PGO) for maximum performance
@@ -200,6 +202,7 @@ Reference these guidelines when:
 - [`num-float-compare`](rules/num-float-compare.md) - Don't compare floats with `==`; use a tolerance, and `total_cmp` for ordering
 - [`num-saturating-clamp`](rules/num-saturating-clamp.md) - Bound values with `clamp` and saturating arithmetic
 - [`num-nonzero`](rules/num-nonzero.md) - Use `NonZero*` types to forbid zero and unlock the niche optimization
+- [`num-bit-width`](rules/num-bit-width.md) - Use named unsigned integer bit helpers when they clarify bit-width and set-bit operations
 
 ### 10. Type Safety (MEDIUM)
 
@@ -216,6 +219,8 @@ Reference these guidelines when:
 - [`type-deref-coercion`](rules/type-deref-coercion.md) - Implement `Deref`/`DerefMut` only for smart-pointer and transparent wrapper types
 - [`type-display-vs-debug`](rules/type-display-vs-debug.md) - Use `Display` for user-facing output and `Debug` for diagnostics; never swap them
 - [`type-numeric-fmt`](rules/type-numeric-fmt.md) - Implement `LowerHex`, `UpperHex`, `Octal`, and `Binary` for numeric newtypes
+- [`type-named-fields`](rules/type-named-fields.md) - Use named fields for values whose positions would obscure their meaning
+- [`type-utf8-boundaries`](rules/type-utf8-boundaries.md) - Distinguish byte offsets, Unicode scalar values, and grapheme clusters when slicing text
 
 ### 11. Trait & Generics Design (MEDIUM)
 
@@ -225,6 +230,7 @@ Reference these guidelines when:
 - [`trait-default-methods`](rules/trait-default-methods.md) - Define a trait in terms of a few required methods plus defaulted ones built on top of them
 - [`trait-dyn-vs-generic`](rules/trait-dyn-vs-generic.md) - Choose static dispatch (generics / `impl Trait`) vs dynamic dispatch (`dyn Trait`) deliberately
 - [`trait-object-safety`](rules/trait-object-safety.md) - Keep a trait dyn-compatible (object-safe) when you need `dyn Trait`
+- [`trait-ord-consistent`](rules/trait-ord-consistent.md) - Keep `Ord`, `PartialOrd`, `Eq`, and `PartialEq` consistent
 
 ### 12. Conversions (MEDIUM)
 
@@ -235,7 +241,7 @@ Reference these guidelines when:
 ### 13. Const & Compile-Time (MEDIUM)
 
 - [`const-block`](rules/const-block.md) - Use inline `const { }` blocks for compile-time evaluation and assertions
-- [`const-fn`](rules/const-fn.md) - Make functions `const fn` when they can run at compile time
+- [`const-fn`](rules/const-fn.md) - Use `const fn` for useful compile-time operations and preserve public const-callability
 - [`const-generics`](rules/const-generics.md) - Parameterize over values with const generics `<const N: usize>`
 - [`const-vs-static`](rules/const-vs-static.md) - Use `const` for an inlined value and `static` for a single addressed instance
 
@@ -257,6 +263,7 @@ Reference these guidelines when:
 - [`pat-if-let-chains`](rules/pat-if-let-chains.md) - Use `if let` chains to combine pattern bindings and conditions
 - [`pat-exhaustive-enum`](rules/pat-exhaustive-enum.md) - Match owned enums exhaustively; avoid catch-all `_` that hides new variants
 - [`pat-at-bindings`](rules/pat-at-bindings.md) - Use `@` bindings to capture a value while matching it against a pattern
+- [`pat-if-let-guards`](rules/pat-if-let-guards.md) - Use `if let` match guards to bind data needed only by one arm
 
 ### 16. Macros (MEDIUM)
 
@@ -378,6 +385,7 @@ Reference these guidelines when:
 - [`proj-feature-additive`](rules/proj-feature-additive.md) - Design Cargo features to be strictly additive
 - [`proj-msrv-declare`](rules/proj-msrv-declare.md) - Declare `rust-version` (MSRV) in Cargo.toml and test it in CI
 - [`proj-build-rs-minimal`](rules/proj-build-rs-minimal.md) - Keep `build.rs` minimal, deterministic, and idempotent
+- [`proj-cfg-select`](rules/proj-cfg-select.md) - Use `cfg_select!` for one-of-many conditional items or expressions
 
 ### 25. Clippy & Linting (LOW)
 
@@ -394,19 +402,20 @@ Reference these guidelines when:
 - [`lint-workspace-lints`](rules/lint-workspace-lints.md) - Configure lints at workspace level for consistent enforcement
 - [`lint-cfg-check`](rules/lint-cfg-check.md) - Enable `unexpected_cfgs` and declare known cfgs to catch feature-gate typos
 - [`lint-clippy-nursery-selected`](rules/lint-clippy-nursery-selected.md) - Enable high-value `clippy::nursery` lints selectively, not the whole group
+- [`lint-warnings-deny-config`](rules/lint-warnings-deny-config.md) - Use Cargo `build.warnings` for a warning-free CI policy without changing compiler flags
 
 ### 26. Anti-patterns (REFERENCE)
 
 - [`anti-unwrap-abuse`](rules/anti-unwrap-abuse.md) - Don't use `.unwrap()` in production code
 - [`anti-expect-lazy`](rules/anti-expect-lazy.md) - Don't use expect for recoverable errors
 - [`anti-clone-excessive`](rules/anti-clone-excessive.md) - Don't clone when borrowing works
-- [`anti-lock-across-await`](rules/anti-lock-across-await.md) - Don't hold locks across await points
+- [`anti-lock-across-await`](rules/anti-lock-across-await.md) - Avoid synchronous guards and unnecessary async critical sections across await points
 - [`anti-string-for-str`](rules/anti-string-for-str.md) - Don't accept &String when &str works
 - [`anti-vec-for-slice`](rules/anti-vec-for-slice.md) - Don't accept &Vec<T> when &[T] works
 - [`anti-index-over-iter`](rules/anti-index-over-iter.md) - Don't use indexing when iterators work
 - [`anti-panic-expected`](rules/anti-panic-expected.md) - Don't panic on expected or recoverable errors
 - [`anti-empty-catch`](rules/anti-empty-catch.md) - Don't silently ignore errors
-- [`anti-over-abstraction`](rules/anti-over-abstraction.md) - Don't over-abstract with excessive generics
+- [`anti-over-abstraction`](rules/anti-over-abstraction.md) - Introduce traits and generics for a real abstraction boundary rather than speculative flexibility
 - [`anti-premature-optimize`](rules/anti-premature-optimize.md) - Don't optimize before profiling
 - [`anti-type-erasure`](rules/anti-type-erasure.md) - Don't use Box<dyn Trait> when impl Trait works
 - [`anti-format-hot-path`](rules/anti-format-hot-path.md) - Don't use format! in hot paths
@@ -417,25 +426,17 @@ Reference these guidelines when:
 
 ## Recommended Cargo.toml Settings
 
+Start with Cargo defaults and the project's existing profiles. Enable LTO, fewer codegen units, or abort-on-panic only for a measured benefit and an explicit operational contract. These are optional tuning candidates:
+
 ```toml
 [profile.release]
-opt-level = 3
-lto = "fat"
-codegen-units = 1
-panic = "abort"
-strip = true
+# lto = "thin"
+# codegen-units = 1
+# panic = "abort"  # Disables unwinding; changes failure behavior
 
 [profile.bench]
-inherits = "release"
-debug = true
+debug = "line-tables-only"
 strip = false
-
-[profile.dev]
-opt-level = 0
-debug = true
-
-[profile.dev.package."*"]
-opt-level = 3  # Optimize dependencies in dev
 ```
 
 ---
@@ -473,6 +474,8 @@ This skill provides rule identifiers for quick reference. When generating or rev
 
 ## Sources & Attribution
 
+This fork applies reviewed upstream fixes and selected portable Google guidance. Read [references/source-review.md](references/source-review.md) for source revisions, adopted rules, and excluded project-specific policies.
+
 This skill is an independent synthesis of official Rust guidance, well-known books, and patterns from widely-used crates. It is not affiliated with or endorsed by the Rust project or any crate author; the text and code examples are original.
 
 **Official Rust documentation**
@@ -484,6 +487,7 @@ This skill is an independent synthesis of official Rust guidance, well-known boo
 - [Standard library docs](https://doc.rust-lang.org/std/) and [release notes](https://doc.rust-lang.org/releases.html)
 
 **Books & guides**
+- [Google Rust Style Guide](https://google.github.io/styleguide/rustguide.html) and [Comprehensive Rust](https://google.github.io/comprehensive-rust/) — selected portable guidance; see the source review above
 - [The Rust Performance Book](https://nnethercote.github.io/perf-book/) — Nicholas Nethercote
 - [Rust Design Patterns](https://rust-unofficial.github.io/patterns/) — rust-unofficial
 - [Rust Atomics and Locks](https://marabos.nl/atomics/) — Mara Bos

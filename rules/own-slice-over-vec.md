@@ -65,10 +65,14 @@ greet(literal);  // &str works directly
 // Box<T>  -> &T     (via Deref)
 // Arc<T>  -> &T     (via Deref)
 
-fn process(data: &[u8]) { /* ... */ }
+use std::sync::Arc;
+
+fn process(data: &[u8]) {
+    println!("{}", data.len());
+}
 
 let vec: Vec<u8> = vec![1, 2, 3];
-let boxed: Box<[u8]> = vec.into_boxed_slice();
+let boxed: Box<[u8]> = vec![1, 2, 3].into_boxed_slice();
 let arc: Arc<[u8]> = Arc::from(&[1, 2, 3][..]);
 
 process(&vec);    // Works
@@ -76,21 +80,60 @@ process(&boxed);  // Works
 process(&arc);    // Works
 ```
 
-## Path Types Too
+## Borrow the Data Inside Wrappers
+
+When only the contained data is needed, accept `&T` rather than `&Box<T>` and `Option<&T>` rather than `&Option<T>`. This follows the Google Rust Style Guide's flexible-reference guidance. Keep wrapper-specific parameters when their identity or operations are actually part of the contract.
 
 ```rust
-// Bad
-fn read_config(path: &PathBuf) -> Config { /* ... */ }
+fn length(value: &str) -> usize {
+    value.len()
+}
 
-// Good - accepts &Path, &PathBuf, &str, &String
-fn read_config(path: &Path) -> Config { /* ... */ }
+fn optional_length(value: Option<&str>) -> usize {
+    value.map_or(0, str::len)
+}
 
-// Even better - accept anything path-like
-fn read_config(path: impl AsRef<Path>) -> Config {
-    let path = path.as_ref();
-    // ...
+let boxed = Box::new(String::from("hello"));
+assert_eq!(length(&boxed), 5);
+assert_eq!(length("world"), 5);
+
+let owned = Some(String::from("hello"));
+assert_eq!(optional_length(owned.as_deref()), 5);
+assert_eq!(optional_length(Some("world")), 5);
+assert_eq!(optional_length(None), 0);
+```
+
+Use `Option::as_ref()` to convert `&Option<T>` into `Option<&T>`; use `as_deref()` when the contained value should also be dereferenced, such as `Option<String>` to `Option<&str>`.
+
+## Path Types Too
+
+`&Path` accepts `&Path` and, through deref coercion, `&PathBuf`. String inputs require an explicit conversion such as `Path::new`, or a generic parameter accepting `AsRef<Path>`.
+
+```rust
+use std::path::{Path, PathBuf};
+
+fn read_config(path: &Path) -> std::io::Result<String> {
+    std::fs::read_to_string(path)
+}
+
+fn read_config_flexible(path: impl AsRef<Path>) -> std::io::Result<String> {
+    read_config(path.as_ref())
+}
+
+fn callers(path: &Path, buffer: &PathBuf, text: &String) {
+    let _ = read_config(path);
+    let _ = read_config(buffer);
+    let _ = read_config(Path::new(text));
+    let _ = read_config_flexible("config.toml");
+    let _ = read_config_flexible(text);
 }
 ```
+
+Choose the generic form when its extra accepted inputs help callers; it is not inherently better than a concrete `&Path` API.
+
+## When Iteration Is Enough
+
+A reusable library function that only traverses its input can accept `impl IntoIterator<Item = T>` (or borrowed items) to support noncontiguous collections and iterator adapters. A slice remains a clear choice for application code, indexed access, or callers that already have contiguous data; generic iteration is not a requirement for every function.
 
 ## When to Accept Owned Types
 

@@ -13,23 +13,22 @@ python3 checks/validate.py
 # compile-check the examples
 cd checks
 python3 gen.py                                              # extract blocks -> examples/
-cargo check --examples --keep-going --message-format=json > check.json
+cargo check --locked --examples --target x86_64-unknown-linux-gnu --keep-going --message-format=json > check.json
 python3 analyze.py check.json                               # classify results
-python3 analyze.py check.json --check-baseline baseline.txt # CI gate: fail on NEW suspects
+python3 analyze.py check.json --check-baseline baseline.txt # CI gate: require exact baseline parity
 ```
 
-Both run in CI (`.github/workflows/ci.yml`): `validate` (Python only) and
-`examples` (pinned to Rust 1.95.0, the toolchain `baseline.txt` was generated on).
+CI (`.github/workflows/ci.yml`) runs both gates through `checks/check.sh`.
+The example baseline is generated on Rust 1.97.1 for x86_64-unknown-linux-gnu.
 
 ## Updating the baseline
 
 `baseline.txt` lists the currently-accepted suspects (fragments/pseudocode the
-heuristics can't auto-classify). The CI gate fails only on signatures *not* in
-it. After intentionally adding/changing examples, regenerate it on the pinned
+heuristics can't auto-classify). The CI gate requires exact signature parity: both new and stale entries fail. It also rejects incomplete Cargo output so missing toolchains or failed dependency builds cannot appear successful. After intentionally adding/changing examples, regenerate it on the pinned
 toolchain and review the diff:
 
 ```bash
-rustup run 1.95.0 cargo check --examples --keep-going --message-format=json > check.json
+rustup run 1.97.1 cargo check --locked --examples --target x86_64-unknown-linux-gnu --keep-going --message-format=json > check.json
 python3 analyze.py check.json --emit-baseline > baseline.txt
 ```
 
@@ -56,7 +55,7 @@ nightly `#![feature]` gates, procedural-macro code, placeholder crate names
 
 ## Notes
 
-- Run on Rust ≥ 1.95: some examples use APIs stabilized in 1.95 (e.g. the
+- Run on Rust 1.97.1: some examples use APIs stabilized in 1.95 (e.g. the
   `MaybeUninit` array `From` conversions) and will spuriously fail on older
   toolchains.
 - Generated files (`examples/`, `*.json`, `manifest.json`, `target/`) are

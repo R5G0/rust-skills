@@ -1,17 +1,17 @@
 # opt-likely-hint
 
-> Use code structure to hint at likely branches; use intrinsics on nightly
+> Add branch hints only for measured hot paths; distinguish stable cold hints from nightly intrinsics
 
 ## Why It Matters
 
-Modern CPUs predict branches to speculatively execute code. Mispredictions cause pipeline stalls (10-20 cycles). Helping the compiler understand which branches are likely allows it to generate optimal code layout and branch hints, improving performance in hot paths.
+Branch layout can affect hot-path performance, but the benefit depends on the target, compiler, and actual branch distribution. Use profile data before adding optimizer hints. Early returns and match-arm ordering can improve readability without guaranteeing any particular prediction or generated layout.
 
 ## Stable Rust: Code Structure Hints
 
 ```rust
 // Pattern 1: Early returns for unlikely cases
 fn process(data: Option<&Data>) -> i32 {
-    // Compiler assumes early return is "unlikely"
+    // An early return makes the main flow clear; it is not a probability hint.
     let data = match data {
         None => return 0,  // Unlikely
         Some(d) => d,
@@ -24,7 +24,7 @@ fn process(data: Option<&Data>) -> i32 {
 // Pattern 2: if-else ordering
 fn calculate(x: i32) -> i32 {
     if x >= 0 {
-        // Put likely case in "if" branch
+        // Put the main case here for readability; measure optimizer effects.
         x * 2
     } else {
         // Unlikely case in "else"
@@ -50,7 +50,7 @@ fn cold_empty_error() -> Result<(), Error> {
 ## Nightly: std::hint
 
 ```rust
-// Requires nightly; still unstable as of Rust 1.96
+// Requires nightly; still unstable as of Rust 1.97
 #![feature(likely_unlikely)]
 use std::hint::{likely, unlikely};
 
@@ -70,7 +70,7 @@ fn process(data: &Data) -> i32 {
 ## Boolean Likely Wrapper (Nightly)
 
 ```rust
-// Requires nightly; still unstable as of Rust 1.96
+// Requires nightly; still unstable as of Rust 1.97
 #![feature(likely_unlikely)]
 
 #[inline(always)]
@@ -149,10 +149,10 @@ fn search_common(data: &[i32], target: i32) -> Option<usize> {
 ## Match Arm Ordering
 
 ```rust
-// Put most common variants first
+// Order disjoint variants for readability, not as a guaranteed branch hint.
 fn process_message(msg: Message) {
     match msg {
-        // Most common - listed first
+        // Main case - listed first for readability
         Message::Data(d) => handle_data(d),
         Message::Heartbeat => (), // Second most common
         

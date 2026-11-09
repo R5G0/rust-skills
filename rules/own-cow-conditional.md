@@ -4,7 +4,7 @@
 
 ## Why It Matters
 
-`Cow` (Clone-on-Write) lets you avoid allocations when you *might* need to own data but usually don't. It holds either a borrowed reference or an owned value, cloning only when mutation is needed.
+`Cow` (Clone-on-Write) holds either a borrowed reference or an owned value. It can avoid allocating when a borrowed value already satisfies the operation, while allowing an owned result when needed. Mutation through `to_mut()` clones borrowed contents; `into_owned()` also clones borrowed contents even without mutation. Neither method guarantees that an entire processing path is allocation-free.
 
 ## Bad
 
@@ -74,24 +74,23 @@ pub(crate) fn file_name<'a>(path: &Cow<'a, [u8]>) -> Option<Cow<'a, [u8]>> {
 ```rust
 use std::borrow::Cow;
 
-fn process_text(text: Cow<'_, str>) -> Cow<'_, str> {
-    if text.contains("bad_word") {
-        // to_mut() clones if borrowed, returns &mut if owned
-        let mut owned = text.into_owned();
-        owned = owned.replace("bad_word", "***");
-        Cow::Owned(owned)
-    } else {
-        text  // Pass through unchanged
+fn process_text(mut text: Cow<'_, str>) -> Cow<'_, str> {
+    if text.bytes().any(|byte| byte.is_ascii_uppercase()) {
+        // Clone borrowed text once; an owned String is mutated in place.
+        text.to_mut().make_ascii_lowercase();
     }
+    text
 }
 
 // Usage
 let borrowed: Cow<str> = Cow::Borrowed("hello world");
 let result = process_text(borrowed);  // No allocation!
 
-let with_bad: Cow<str> = Cow::Borrowed("hello bad_word");
-let result = process_text(with_bad);  // Allocates only here
+let uppercase: Cow<str> = Cow::Borrowed("HELLO world");
+let result = process_text(uppercase);  // Borrowed text becomes an owned String
 ```
+
+`to_mut()` borrows the `Cow` mutably and returns `&mut` to its owned representation, cloning first if needed. `into_owned()` consumes the `Cow`, moves out an existing owned value, or clones a borrowed one. Operations such as `String::replace` can allocate an additional result independently of either method.
 
 ## Cow with Collections
 
@@ -126,7 +125,7 @@ fn collect_errors<'a>(
 | Usually borrow, sometimes own | Yes |
 | Always need owned data | No, just use owned type |
 | Always borrow | No, just use reference |
-| Hot path, avoiding all allocations | Yes |
+| Hot path with a frequent borrowed fast path | Consider it; measure allocation behavior |
 | Returning static strings or formatted | Yes |
 
 ## See Also

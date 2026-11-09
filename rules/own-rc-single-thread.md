@@ -4,7 +4,7 @@
 
 ## Why It Matters
 
-`Rc<T>` (Reference Counted) provides shared ownership without the atomic overhead of `Arc<T>`. In single-threaded code, `Rc` is faster because it uses non-atomic reference counting. Using `Arc` when you don't need thread-safety wastes CPU cycles on unnecessary synchronization.
+`Rc<T>` (Reference Counted) provides shared ownership without atomic reference-count operations. Consider it for data whose owners remain on one thread; the end-to-end performance difference from `Arc<T>` depends on workload. Start with an owned value or borrowing when sharing is not required, and choose `Arc<T>` when the API or executor requires cross-thread ownership.
 
 ## Bad
 
@@ -24,7 +24,7 @@ fn build_tree() -> Arc<Node> {
 }
 ```
 
-Atomic operations have measurable overhead even without contention.
+Atomic reference-count operations can add overhead; measure their significance in the actual workload.
 
 ## Good
 
@@ -52,8 +52,8 @@ fn build_tree() -> Rc<Node> {
 |----------|-----|
 | Single-threaded, shared ownership | `Rc<T>` |
 | Multi-threaded, shared ownership | `Arc<T>` |
-| Single owner, might need multiple later | Start with `Rc`, upgrade if needed |
-| Library code, unknown threading model | `Arc<T>` (safer default) |
+| Single owner | Owned value or `Box<T>` when indirection is needed |
+| Library code | Follow its ownership and threading contract; use `Arc<T>` if shared cross-thread use is required |
 
 ## Breaking Cycles with Weak
 
@@ -87,7 +87,7 @@ let _maybe_parent: Option<Rc<Node>> = child.parent.borrow().upgrade();
 - Prefer `Rc::clone(&x)` to `x.clone()`: it makes the cheap refcount bump explicit and visually distinct from a deep clone.
 - `Rc<T>` gives shared *immutable* access; pair it with `RefCell<T>` (`Rc<RefCell<T>>`) for shared mutability in single-threaded code.
 - `Rc::strong_count(&x)` / `Rc::weak_count(&x)` inspect the counts — handy in tests.
-- `Rc` is `!Send` and `!Sync`, so the compiler rejects sending it across threads; switch to `Arc` (with `Mutex`/`RwLock`) at a thread boundary.
+- `Rc` is `!Send` and `!Sync`, so the compiler rejects sending it across threads. If cross-thread sharing is required, design around `Arc` and appropriate `Send`/`Sync` contents, using `Mutex`/`RwLock` when mutation requires synchronization. A current-thread Tokio runtime still requires `Send` for `tokio::spawn`; use local tasks for non-`Send` futures.
 
 ## See Also
 

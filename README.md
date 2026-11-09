@@ -1,13 +1,15 @@
 # Rust Skills
 
-![rules](https://img.shields.io/badge/rules-265-blue)
+![rules](https://img.shields.io/badge/rules-273-blue)
 ![categories](https://img.shields.io/badge/categories-26-blue)
-![Rust](https://img.shields.io/badge/Rust-1.96%20%2F%202024%20edition-orange)
+![Rust](https://img.shields.io/badge/Rust-1.97.1%20%2F%202024%20edition-orange)
 ![license](https://img.shields.io/badge/license-MIT-green)
 
-265 Rust rules your AI coding agent can use to write better code. Current for Rust 1.96 (2024 edition).
+273 Rust rules your AI coding agent can use to write better code. Current for Rust 1.97.1 (2024 edition).
 
 Works with Claude Code, Cursor, Windsurf, Copilot, Codex, Aider, Zed, Amp, Cline, and pretty much any other agent that supports skills.
+
+This fork fixes reviewed upstream issues and adds selected portable Google guidance. See [the source review](references/source-review.md) for scope and applicability.
 
 ## Why
 
@@ -16,7 +18,7 @@ Out of the box, coding agents write *average* Rust — they clone to dodge the b
 ## Install
 
 ```bash
-npx add-skill leonardomso/rust-skills
+npx skills add R5G0/rust-skills
 ```
 
 That's it. The CLI figures out which agents you have and installs the skill to the right place.
@@ -66,7 +68,7 @@ fn first_word(s: &str) -> Option<&str> {
 
 ## What's in here
 
-265 rules split into 26 categories:
+273 rules split into 26 categories:
 
 | Category | Rules | What it covers |
 |----------|-------|----------------|
@@ -76,15 +78,15 @@ fn first_word(s: &str) -> Option<&str> {
 | **Unsafe Code** | 7 | `SAFETY:` comments, Miri, `MaybeUninit`, 2024-edition unsafe |
 | **API Design** | 17 | Builder pattern, newtypes, sealed traits, `FromIterator` |
 | **Async** | 18 | Tokio patterns, channels, async fn in traits, cancel safety |
-| **Concurrency** | 4 | rayon, scoped threads, atomic ordering, thread-locals |
+| **Concurrency** | 5 | rayon, scoped threads, atomic ordering, thread-locals |
 | **Optimization** | 12 | LTO, inlining, PGO, SIMD |
-| **Numeric & Arithmetic** | 5 | Overflow handling, `as` vs `TryFrom`, float compare, `NonZero` |
-| **Type Safety** | 13 | Newtypes, parse don't validate, `Deref`, `Display`/`Debug` |
-| **Trait & Generics Design** | 6 | dyn vs generic, associated types, blanket impls, object safety, orphan rule |
+| **Numeric & Arithmetic** | 6 | Overflow handling, `as` vs `TryFrom`, float compare, `NonZero` |
+| **Type Safety** | 15 | Newtypes, parse don't validate, `Deref`, `Display`/`Debug` |
+| **Trait & Generics Design** | 7 | dyn vs generic, associated types, blanket impls, object safety, orphan rule |
 | **Conversions** | 3 | `TryFrom`, `FromStr`, `AsMut` |
 | **Const & Compile-Time** | 4 | `const fn`, const vs static, const generics, `const {}` blocks |
 | **Serde** | 8 | rename_all, default, flatten, enum tagging, validate-on-deserialize |
-| **Pattern Matching** | 5 | `let-else`, `matches!`, if-let chains, exhaustive matches |
+| **Pattern Matching** | 6 | `let-else`, `matches!`, if-let chains, exhaustive matches |
 | **Macros** | 8 | `macro_rules!` hygiene, fragment specifiers, proc-macros with syn/quote |
 | **Closures** | 5 | Fn/FnMut/FnOnce bounds, returning `impl Fn`, move & disjoint capture |
 | **Collections** | 4 | HashMap/BTreeMap/IndexMap, Vec/VecDeque, sets, `BinaryHeap` |
@@ -93,8 +95,8 @@ fn first_word(s: &str) -> Option<&str> {
 | **Docs** | 12 | Doc examples, intra-doc links, README/crate-doc unification |
 | **Observability** | 7 | tracing over log, spans, structured fields, redacting secrets |
 | **Performance** | 13 | Iterators, entry API, faster hashers, I/O buffering |
-| **Project Structure** | 14 | Workspaces, module layout, features, MSRV |
-| **Linting** | 13 | Clippy config, CI setup, `unexpected_cfgs` |
+| **Project Structure** | 15 | Workspaces, module layout, features, MSRV |
+| **Linting** | 14 | Clippy config, CI setup, `unexpected_cfgs` |
 | **Anti-patterns** | 15 | Common mistakes and how to fix them |
 
 Each rule has:
@@ -108,128 +110,46 @@ Each rule has:
 The design is built for low token cost and easy auditing:
 
 - **[`SKILL.md`](./SKILL.md)** is a lightweight index — every rule listed as a one-line summary, grouped by category, with a link to its file. The agent reads this first.
-- **[`rules/`](./rules)** holds one Markdown file per rule (`<prefix>-<name>.md`). The agent opens only the handful relevant to your code instead of loading all 218 — progressive disclosure keeps context small.
+- **[`rules/`](./rules)** holds one Markdown file per rule (`<prefix>-<name>.md`). The agent opens only the handful relevant to your code instead of loading the full corpus — progressive disclosure keeps context small.
 - **Prefixes** (`own-`, `err-`, `unsafe-`, `async-`, …) map directly to categories, so an agent reviewing async code can pull just `async-`, `conc-`, and `own-` rules.
 
 `CLAUDE.md` and `AGENTS.md` are symlinks to `SKILL.md`, so the same content works across agent conventions.
 
 ## Manual install
 
-If `add-skill` doesn't work for your setup, here's how to install manually:
+Install the complete directory so the index can resolve its rule and reference files.
 
-<details>
-<summary><b>Claude Code</b></summary>
-
-Global (applies to all projects):
-```bash
-git clone https://github.com/leonardomso/rust-skills.git ~/.claude/skills/rust-skills
-```
-
-Or just for one project:
-```bash
-git clone https://github.com/leonardomso/rust-skills.git .claude/skills/rust-skills
-```
-</details>
-
-<details>
-<summary><b>OpenCode</b></summary>
+For Codex, Amp, and agents that discover project skills under `.agents/skills`:
 
 ```bash
-git clone https://github.com/leonardomso/rust-skills.git .opencode/skills/rust-skills
+git clone https://github.com/R5G0/rust-skills.git .agents/skills/rust-skills
 ```
-</details>
 
-<details>
-<summary><b>Cursor</b></summary>
+For Claude Code:
 
 ```bash
-git clone https://github.com/leonardomso/rust-skills.git .cursor/skills/rust-skills
+# One project
+git clone https://github.com/R5G0/rust-skills.git .claude/skills/rust-skills
+# Or all projects
+git clone https://github.com/R5G0/rust-skills.git ~/.claude/skills/rust-skills
 ```
 
-Or just grab the skill file:
-```bash
-curl -o .cursorrules https://raw.githubusercontent.com/leonardomso/rust-skills/master/SKILL.md
-```
-</details>
-
-<details>
-<summary><b>Windsurf</b></summary>
+For Cursor:
 
 ```bash
-mkdir -p .windsurf/rules
-curl -o .windsurf/rules/rust-skills.md https://raw.githubusercontent.com/leonardomso/rust-skills/master/SKILL.md
-```
-</details>
-
-<details>
-<summary><b>OpenAI Codex</b></summary>
-
-```bash
-git clone https://github.com/leonardomso/rust-skills.git .codex/skills/rust-skills
+git clone https://github.com/R5G0/rust-skills.git .cursor/skills/rust-skills
 ```
 
-Or use the AGENTS.md standard:
-```bash
-curl -o AGENTS.md https://raw.githubusercontent.com/leonardomso/rust-skills/master/SKILL.md
-```
-</details>
+For other agents, clone this repository to a persistent directory and add a
+reference to its `SKILL.md` in the existing agent configuration or instruction
+file. Preserve the adjacent `rules/` and `references/` directories. A single-file
+copy of the index does not include the rules it links to.
 
-<details>
-<summary><b>GitHub Copilot</b></summary>
+For Aider, the cloned entrypoint can be supplied with:
 
-```bash
-mkdir -p .github
-curl -o .github/copilot-instructions.md https://raw.githubusercontent.com/leonardomso/rust-skills/master/SKILL.md
-```
-</details>
-
-<details>
-<summary><b>Aider</b></summary>
-
-Add to `.aider.conf.yml`:
-```yaml
-read: path/to/rust-skills/SKILL.md
-```
-
-Or pass it directly:
 ```bash
 aider --read path/to/rust-skills/SKILL.md
 ```
-</details>
-
-<details>
-<summary><b>Zed</b></summary>
-
-```bash
-curl -o AGENTS.md https://raw.githubusercontent.com/leonardomso/rust-skills/master/SKILL.md
-```
-</details>
-
-<details>
-<summary><b>Amp</b></summary>
-
-```bash
-git clone https://github.com/leonardomso/rust-skills.git .agents/skills/rust-skills
-```
-</details>
-
-<details>
-<summary><b>Cline / Roo Code</b></summary>
-
-```bash
-mkdir -p .clinerules
-curl -o .clinerules/rust-skills.md https://raw.githubusercontent.com/leonardomso/rust-skills/master/SKILL.md
-```
-</details>
-
-<details>
-<summary><b>Other agents (AGENTS.md)</b></summary>
-
-If your agent supports the [AGENTS.md](https://agents.md) standard:
-```bash
-curl -o AGENTS.md https://raw.githubusercontent.com/leonardomso/rust-skills/master/SKILL.md
-```
-</details>
 
 ## All rules
 
@@ -248,6 +168,7 @@ These rules are an independent synthesis of official Rust guidance, well-known b
 - [Standard library docs](https://doc.rust-lang.org/std/) and [release notes](https://doc.rust-lang.org/releases.html)
 
 **Books & guides**
+- [Google Rust Style Guide](https://google.github.io/styleguide/rustguide.html) and [Comprehensive Rust](https://google.github.io/comprehensive-rust/) — selected portable guidance, mapped in [the source review](references/source-review.md)
 - [The Rust Performance Book](https://nnethercote.github.io/perf-book/) — Nicholas Nethercote
 - [Rust Design Patterns](https://rust-unofficial.github.io/patterns/) — rust-unofficial
 - [Rust Atomics and Locks](https://marabos.nl/atomics/) — Mara Bos
@@ -269,7 +190,7 @@ PRs welcome. To add or change a rule:
 1. Create `rules/<prefix>-<name>.md` using a `kebab-case` id with an existing category prefix (`own-`, `err-`, `mem-`, …).
 2. Follow the format of existing rules: a `>` one-line summary, then `## Why It Matters`, `## Bad`, `## Good`, and `## See Also` (with links that resolve).
 3. Make sure code examples compile on current stable Rust.
-4. Add the rule to the index in `SKILL.md` (Quick Reference list + the category count) so it stays in sync.
+4. Run `python3 checks/gen_index.py` to update the index and counts, then run the checks in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ````markdown
 # prefix-rule-name

@@ -38,9 +38,14 @@ unsafe extern "C" {
 }
 
 // Call sites remain unchanged for `unsafe` items:
-fn copy_bytes(dst: *mut u8, src: *const u8, n: usize) {
-    // SAFETY: dst and src are non-overlapping, both valid for n bytes.
-    unsafe { memcpy(dst, src, n) };
+fn copy_bytes(dst: &mut [u8], src: &[u8]) {
+    assert_eq!(dst.len(), src.len(), "buffer lengths differ");
+    if src.is_empty() {
+        return;
+    }
+    // SAFETY: the slices are valid for n bytes; the exclusive destination
+    // borrow ensures its region does not overlap the live source borrow.
+    unsafe { memcpy(dst.as_mut_ptr(), src.as_ptr(), src.len()) };
 }
 
 // Call sites for `safe` items need no unsafe block:
@@ -62,7 +67,9 @@ Run `cargo fix --edition` to apply the mechanical part of this migration automat
 ## Key Points
 
 - The `unsafe` on the block means "I assert these declarations faithfully describe the external ABI". It does not make calls to the items safe by itself.
-- Marking an item `safe` is a promise: if that item is actually unsafe to call, adding `safe` is itself unsound — the compiler will not catch a wrong annotation.
+- Marking an item `safe` is a promise: every input expressible by safe callers must satisfy its contract. A null or bounds check alone does not prove a raw pointer valid.
+- Prefer `dst.copy_from_slice(src)` for an ordinary byte copy. The FFI wrapper above demonstrates preserving a foreign function's preconditions.
+- Use `std::ffi::c_*` types rather than assuming native Rust primitives match C widths. Rust 1.96 changed `c_double` to `f32` on AVR to match that platform's C ABI.
 - `bindgen` (0.70+) and `cbindgen` have been updated to emit `unsafe extern` blocks for Rust 2024 output. Update your code generator if you use one.
 - The `extern "Rust"` ABI for cross-crate `#[no_mangle]` functions follows the same rules (see `unsafe-no-mangle-unsafe`).
 

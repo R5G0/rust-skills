@@ -86,9 +86,11 @@ mod tests {
 - **Construction**: `NonZeroU32::new(n) -> Option<NonZeroU32>`. Use `NonZeroU32::new(n).expect("n must be non-zero")` only at well-verified program boundaries, not in production fallible paths.
 - **Access**: `.get()` returns the inner primitive value.
 - **Arithmetic**: `NonZeroU32` does not implement `Add`/`Sub` directly (the result could be zero). Extract with `.get()`, do arithmetic, and reconstruct with `NonZeroU32::new(result)?`.
-- **Niche optimization** applies to `Option` and `Result`: the compiler stores the `None`/`Err` discriminant in the zero bit-pattern, so no extra word is needed. This also applies to custom newtypes that wrap `NonZero*`.
+- **Ranges**: Rust 1.96 added iteration for ranges of `NonZero*` integers. Keep bounds non-zero instead of extracting primitives merely to iterate.
+- **Niche optimization**: `Option<NonZeroU32>` has the same size and alignment as `u32`; `None` uses the zero bit pattern. Do not assume the same for arbitrary `Result` error types or struct wrappers; use only the layouts explicitly guaranteed by the standard library.
 
 ## See Also
 
 - [type-newtype-ids](type-newtype-ids.md) - wrap IDs in newtypes for type-safe distinctions
 - [mem-smaller-integers](mem-smaller-integers.md) - use the smallest integer type that fits
+- [num-bit-width](num-bit-width.md) - use the named bit-width and set-bit methods instead of hand-rolled masks

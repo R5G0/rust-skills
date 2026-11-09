@@ -4,44 +4,44 @@
 
 ## Why It Matters
 
-Unlike `Copy` which is implicit and "free," `Clone` requires an explicit `.clone()` call, signaling that duplication has a cost. This makes heap allocations and deep copies visible in code, helping developers reason about performance. Types with heap data (`String`, `Vec`, `Box`) should implement `Clone` but not `Copy`.
+`Clone` makes duplication explicit, while `Copy` permits implicit duplication; neither guarantees that copying is free. For owned buffers such as `String` and `Vec<T>`, cloning duplicates contents and can allocate. Implement `Clone` when duplication has a valid meaning, and prefer moving a value when the caller no longer needs it.
 
 ## Bad
 
 ```rust
-// Hiding expensive operations
+// Cloning inside the callee when ownership is already available.
 fn process_data(data: Vec<u32>) -> Vec<u32> {
-    let backup = data; // Moved, not copied - but unclear at call site
-    transform(backup)
+    let mut result = data.clone(); // Unnecessary copy: data is never reused.
+    result.reverse();
+    result
 }
-
-let my_data = vec![1, 2, 3, 4, 5];
-let result = process_data(my_data);
-// my_data is moved - surprise if you expected it to still exist
 ```
 
 ## Good
 
 ```rust
-fn process_data(data: Vec<u32>) -> Vec<u32> {
-    let backup = data; 
-    transform(backup)
+fn process_data(mut data: Vec<u32>) -> Vec<u32> {
+    data.reverse();
+    data // Reuse the allocation supplied by the caller.
 }
 
-let my_data = vec![1, 2, 3, 4, 5];
-let result = process_data(my_data.clone()); // Explicit: "I know this allocates"
-// my_data still available
+let disposable = vec![1, 2, 3];
+let result = process_data(disposable); // Move when the original is no longer needed.
 
-// Or better - take reference if you don't need ownership
-fn process_data_ref(data: &[u32]) -> Vec<u32> {
-    transform(data)
+let retained = vec![1, 2, 3];
+let result = process_data(retained.clone()); // Clone only to retain the original.
+assert_eq!(retained, [1, 2, 3]);
+
+// A read-only operation can instead borrow, without any owned input copy.
+fn maximum(data: &[u32]) -> Option<u32> {
+    data.iter().copied().max()
 }
-let result = process_data_ref(&my_data); // No clone needed
+let largest = maximum(&retained);
 ```
 
 ## Custom Clone Implementation
 
-For types with mixed cheap/expensive fields, implement `Clone` manually:
+Derive `Clone` when field-by-field cloning is correct. Implement it manually when the type needs different semantics or an allocation-reusing `clone_from` implementation:
 
 ```rust
 #[derive(Debug)]
@@ -111,22 +111,10 @@ impl Clone for CachedValue {
 
 ## When to Avoid Clone
 
-```rust
-// Instead of cloning, consider:
-
-// 1. References
-fn process(data: &MyType) { } // Borrow instead of clone
-
-// 2. Cow for conditional cloning
-fn process(data: Cow<'_, str>) { } // Clone only if mutation needed
-
-// 3. Arc for shared ownership
-let shared = Arc::new(expensive_data);
-let handle = shared.clone(); // Cheap: just increments counter
-
-// 4. Passing by value when caller is done with it
-fn consume(data: MyType) { } // Caller moves, no clone
-```
+- Borrow when the callee only needs temporary access.
+- Move an owned value when the caller is done with it.
+- Consider `Cow` when a result can remain borrowed on a common path.
+- Use `Arc` when shared ownership is actually needed. `Arc::clone` increments a reference count without cloning the pointee; it does not provide an independent deep copy.
 
 ## See Also
 

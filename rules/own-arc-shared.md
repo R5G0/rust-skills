@@ -4,7 +4,7 @@
 
 ## Why It Matters
 
-`Arc` (Atomic Reference Counted) provides shared ownership across threads. Unlike `Rc`, its reference count is updated atomically, making it safe for concurrent access. Use it when multiple threads need to read the same data.
+`Arc` (Atomic Reference Counted) provides shared ownership with an atomic reference count. `Arc<T>` is `Send` and `Sync` only when `T` satisfies both `Send` and `Sync`; it does not make the contained value thread-safe. Use it when shared ownership is needed across thread boundaries, and prefer owned values or borrows when they already express the required lifetime.
 
 ## Bad
 
@@ -36,6 +36,8 @@ thread::spawn(move || {
 
 println!("{:?}", data);  // Original still accessible
 ```
+
+`Arc<RefCell<T>>` cannot be shared across threads because `RefCell<T>` is not `Sync`. For shared mutation across threads, use an appropriate synchronized type such as `Mutex<T>` or `RwLock<T>`; their bounds on `T` still apply.
 
 ## Arc with Mutex for Mutable Shared State
 
@@ -69,7 +71,7 @@ Need shared ownership?
 ├── No → Use owned value or references
 └── Yes → Will it cross thread boundaries?
     ├── No → Use Rc<T> (cheaper, no atomic ops)
-    └── Yes → Use Arc<T>
+    └── Yes → Use Arc<T> with T: Send + Sync
         └── Need mutation?
             ├── No → Arc<T> is enough
             └── Yes → Arc<Mutex<T>> or Arc<RwLock<T>>
@@ -138,6 +140,6 @@ for item in items {
 
 - [own-rc-single-thread](own-rc-single-thread.md) - Use Rc for single-threaded sharing
 - [own-mutex-interior](own-mutex-interior.md) - Use Mutex for interior mutability
-- [async-clone-before-await](async-clone-before-await.md) - Clone Arc before await points
+- [async-clone-before-await](async-clone-before-await.md) - Own shared handles across await without deep-copying data
 - [conc-scoped-threads](conc-scoped-threads.md) - Borrow stack data instead of Arc
 - [unsafe-send-sync-manual](unsafe-send-sync-manual.md) - Document manual Send/Sync impls

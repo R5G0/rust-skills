@@ -110,22 +110,19 @@ private_intra_doc_links = "warn"
 
 ## Per-Crate Overrides
 
+Cargo does not allow combining `lints.workspace = true` with per-package lint tables. For a narrow exception, retain inheritance in the manifest and use a scoped source attribute with a reason. Use `deny` rather than `forbid` in the workspace when reviewed exceptions are permitted.
+
 ```toml
 # crate-with-binary/Cargo.toml
 [lints]
 workspace = true
+```
 
-# Binary entry point can use unwrap
-[lints.clippy]
-unwrap_used = "allow"
-
-# test-utils/Cargo.toml
-[lints]
-workspace = true
-
-# Test utilities can print
-[lints.clippy]
-print_stdout = "allow"
+```rust
+#[allow(clippy::print_stdout, reason = "this command writes its result to stdout")]
+fn print_result(value: &str) {
+    println!("{value}");
+}
 ```
 
 ## CI Integration
@@ -140,10 +137,14 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
-      
+      - name: Rustc
+        # Cargo 1.97+: [build] warnings = "deny" in .cargo/config.toml
+        run: cargo check --workspace --all-targets
+
       - name: Clippy
-        run: cargo clippy --workspace --all-targets -- -D warnings
-      
+        # Cargo 1.97+: uses the same build.warnings policy
+        run: cargo clippy --workspace --all-targets
+
       - name: Rustdoc
         run: RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
 ```
@@ -168,5 +169,11 @@ missing_errors_doc = "allow"  # Override pedantic
 ## See Also
 
 - [lint-deny-correctness](./lint-deny-correctness.md) - Critical lints
+- [lint-warnings-deny-config](./lint-warnings-deny-config.md) - warning-free CI via Cargo config
 - [proj-workspace-deps](./proj-workspace-deps.md) - Workspace configuration
 - [anti-unwrap-abuse](./anti-unwrap-abuse.md) - unwrap lints
+
+## Sources
+
+- [Cargo lint configuration and inheritance](https://doc.rust-lang.org/cargo/reference/manifest.html#the-lints-section)
+- [Clippy warning policy](https://doc.rust-lang.org/clippy/usage.html#elevating-warning-to-errors)

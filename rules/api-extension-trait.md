@@ -111,24 +111,45 @@ let content = std::fs::read_to_string(path)
 // Extension only visible where imported
 mod string_utils {
     pub trait StringExt {
-        fn truncate_ellipsis(&self, max_len: usize) -> String;
+        /// Returns at most `max_chars` Unicode scalar values, including dots.
+        fn truncate_ellipsis(&self, max_chars: usize) -> String;
     }
     
     impl StringExt for str {
-        fn truncate_ellipsis(&self, max_len: usize) -> String {
-            if self.len() <= max_len {
-                self.to_string()
-            } else {
-                format!("{}...", &self[..max_len.saturating_sub(3)])
+        fn truncate_ellipsis(&self, max_chars: usize) -> String {
+            if self.chars().nth(max_chars).is_none() {
+                return self.to_owned();
             }
+
+            let dots = max_chars.min(3);
+            let prefix_chars = max_chars - dots;
+            let end = self
+                .char_indices()
+                .nth(prefix_chars)
+                .map_or(self.len(), |(offset, _)| offset);
+            let mut result = self[..end].to_owned();
+            result.push_str(&"..."[..dots]);
+            result
         }
     }
 }
 
 // Only available when explicitly imported
 use string_utils::StringExt;
-let short = "very long string".truncate_ellipsis(10);
+fn main() {
+    assert_eq!("abcdef".truncate_ellipsis(5), "ab...");
+    assert_eq!("東京駅東京".truncate_ellipsis(4), "東...");
+    assert_eq!("東京駅".truncate_ellipsis(3), "東京駅");
+    assert_eq!("東京駅".truncate_ellipsis(2), "..");
+    assert_eq!("text".truncate_ellipsis(0), "");
+}
 ```
+
+This contract counts Unicode scalar values, not bytes or grapheme clusters. The
+owned return value can allocate, including when no truncation is needed. For
+user-visible grapheme truncation, use a Unicode segmentation implementation.
+
+Source: [Comprehensive Rust: String](https://google.github.io/comprehensive-rust/std-types/string.html).
 
 ## Generic Extensions with Bounds
 
@@ -162,3 +183,4 @@ v.push_if_unique(4);  // Adds 4
 - [api-impl-into](./api-impl-into.md) - Using standard conversion traits
 - [name-as-free](./name-as-free.md) - Naming conventions for conversions
 - [trait-blanket-impl](./trait-blanket-impl.md) - Blanket impls for extension traits
+- [type-utf8-boundaries](type-utf8-boundaries.md) - distinguish bytes, scalars, and grapheme clusters

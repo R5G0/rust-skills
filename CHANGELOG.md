@@ -4,6 +4,27 @@ All notable changes to this skill are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and the project aims to follow
 semantic versioning for the rule set.
 
+## [Unreleased] — R5G0 fork
+
+### Fixed
+- Apply upstream issues #6, #8 and #10 and the dyn-dispatch correction in PR #7.
+- Correct path coercions, clone/Copy costs, Cow operations, Send/Sync bounds,
+  mutex footprints, downgrade stability and scheduling claims.
+- Correct cancellation progress, deadline reuse, channel closure and task
+  lifecycle guidance; repair unsound safe raw-pointer wrappers and UTF-8 slicing.
+- Correct const API compatibility, must_use defaults, lint inheritance,
+  atomic ordering and conditional performance guidance.
+
+### Added
+- Six reviewed Rust 1.95–1.97 rules from PR #5, with additional corrections.
+- Two portable Google-inspired rules: named fields and UTF-8 boundaries.
+- A source review mapping adopted guidance and excluded project-specific policies.
+
+### Changed
+- 273 rules across 26 categories; metadata version 1.5.1+fork.1.
+- Pin the compile harness to Rust 1.97.1, add async-trait, require complete
+  Cargo diagnostics and exact suspect-baseline parity.
+
 ## [1.5.1]
 
 ### Changed

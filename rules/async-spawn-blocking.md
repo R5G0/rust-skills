@@ -69,10 +69,8 @@ async fn read_with_sync_lib(path: PathBuf) -> Vec<u8> {
 - Synchronous HTTP clients
 - Thread::sleep
 
-// Example thresholds (rough guidelines):
-// < 10µs: OK on async thread
-// 10µs - 1ms: Consider spawn_blocking
-// > 1ms: Definitely spawn_blocking
+// Measure worst-case poll duration and executor latency under realistic load.
+// There is no universal microsecond threshold for moving work off a worker.
 ```
 
 ## Practical Examples
@@ -149,6 +147,10 @@ async fn parallel_process(items: Vec<Item>) -> Vec<Output> {
 ```
 
 ## See Also
+
+Bound admission for CPU-heavy jobs before spawning them, using a semaphore or a dedicated compute pool. The blocking pool's large default thread limit and queued closures do not bound application memory or CPU contention. Once a blocking closure has started, aborting its JoinHandle does not stop it; design cooperative shutdown when needed.
+
+Source: [Tokio spawn_blocking](https://docs.rs/tokio/latest/tokio/task/fn.spawn_blocking.html).
 
 - [async-tokio-fs](async-tokio-fs.md) - Use tokio::fs for async file I/O
 - [async-no-lock-await](async-no-lock-await.md) - Don't hold locks across await

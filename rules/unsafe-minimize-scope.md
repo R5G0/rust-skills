@@ -1,78 +1,84 @@
 # unsafe-minimize-scope
 
-> Keep `unsafe` blocks as small as possible — mark only the operation that requires unsafety, not the surrounding safe code.
+> Keep unsafe operations narrowly scoped and expose safe APIs only when their invariants are enforced
 
 ## Why It Matters
 
-When an entire function is marked `unsafe fn`, every line inside appears equally suspect to an auditor. Shrinking unsafe blocks to the minimum isolates exactly which operation violates Rust's safety invariants, making reviews tractable and bugs easier to find. The Rust 2024 edition enforces this with the `unsafe_op_in_unsafe_fn` lint: unsafe operations inside an `unsafe fn` now require their own explicit `unsafe {}` block rather than inheriting the function's unsafety implicitly.
+A small `unsafe` block helps reviewers locate the operations requiring a safety proof, but its size does not establish soundness. A safe function must uphold that proof for every input safe callers can supply. Prefer an equivalent safe implementation; justify any performance-motivated unsafe alternative with measurements.
 
 ## Bad
 
 ```rust
-// Entire function body marked unsafe — safe arithmetic, bounds checks,
-// and the single unsafe dereference are all equally "dangerous" to a reader.
-unsafe fn sum_at(ptr: *const i32, len: usize, index: usize) -> i32 {
-    let adjusted_len = len.saturating_sub(1); // safe — but looks unsafe
-    assert!(index <= adjusted_len);           // safe — but looks unsafe
-    let value = *ptr.add(index);              // the only actually unsafe op
-    value + 1                                 // safe — but looks unsafe
-}
-```
-
-```rust
-// Huge unsafe block wrapping safe logic inside an unsafe fn (2024 edition
-// now requires unsafe {} here anyway, but large blocks are still bad style).
-pub unsafe fn process(ptr: *const u8, len: usize) -> Vec<u8> {
-    unsafe {
-        let mut result = Vec::with_capacity(len); // safe
-        for i in 0..len {                         // safe
-            result.push(*ptr.add(i));             // unsafe — buried in noise
-        }
-        result
-    }
+// UNSOUND: an integer bounds check cannot establish pointer validity.
+fn sum_at(ptr: *const i32, len: usize, index: usize) -> i32 {
+    assert!(index < len, "index out of bounds");
+    // A safe caller can pass a null, dangling, or misaligned pointer.
+    let value = unsafe { *ptr.add(index) };
+    value + 1
 }
 ```
 
 ## Good
 
 ```rust
-// Safe wrapper: the single unsafe operation is clearly isolated.
-fn sum_at(ptr: *const i32, len: usize, index: usize) -> i32 {
-    assert!(index < len, "index out of bounds");
-    // SAFETY: index < len guarantees ptr.add(index) is within the allocation.
-    let value = unsafe { *ptr.add(index) };
-    value + 1
+// A slice carries the validity and lifetime guarantees the operation needs.
+fn increment_at(values: &[i32], index: usize) -> Option<i32> {
+    values.get(index)?.checked_add(1)
+}
+
+fn main() {
+    assert_eq!(increment_at(&[10, 20], 1), Some(21));
+    assert_eq!(increment_at(&[], 0), None);
+    assert_eq!(increment_at(&[i32::MAX], 0), None);
 }
 ```
 
+When raw pointers are genuinely required, retain an unsafe caller contract and
+isolate the operation that relies on it:
+
 ```rust
-// In a genuinely unsafe fn, 2024 edition still requires unsafe {} per op.
-/// # Safety
+/// Copies bytes from a foreign buffer.
 ///
-/// `ptr` must be valid for reads for `len` bytes and properly aligned.
-pub unsafe fn process(ptr: *const u8, len: usize) -> Vec<u8> {
-    let mut result = Vec::with_capacity(len); // safe — outside any unsafe block
-    for i in 0..len {
-        // SAFETY: caller guarantees ptr is valid for len bytes; i < len.
-        let byte = unsafe { *ptr.add(i) };
+/// # Safety
+/// If `len` is nonzero, `ptr` must identify a single allocation containing
+/// `len` initialized, readable bytes, remain live for this call, and have no
+/// concurrent writes to those bytes. The range must fit within `isize::MAX`.
+unsafe fn copy_foreign_bytes(ptr: *const u8, len: usize) -> Vec<u8> {
+    let mut result = Vec::with_capacity(len);
+    for index in 0..len {
+        // SAFETY: the caller guarantees readable initialized bytes in one
+        // live allocation without concurrent writes; index is within len.
+        let byte = unsafe { *ptr.add(index) };
         result.push(byte);
     }
     result
 }
+
+fn main() {
+    let bytes = [3, 7, 11];
+    // SAFETY: bytes remains live and unchanged, and the entire array is valid.
+    let copied = unsafe { copy_foreign_bytes(bytes.as_ptr(), bytes.len()) };
+    assert_eq!(copied, bytes);
+}
 ```
 
-## Key Points
+## Review the Entire Abstraction
 
-- **2024 edition `unsafe_op_in_unsafe_fn`**: even inside an `unsafe fn`, each unsafe operation now needs its own `unsafe {}`. This is a hard error in Rust 2024.
-- A safe wrapper around a small `unsafe {}` is almost always preferable to exposing the entire function as `unsafe fn`.
-- Each small unsafe block needs its own `// SAFETY:` comment (see `unsafe-safety-comment`).
-- If multiple consecutive lines are all unsafe for the *same* invariant reason, a single block covering only those lines is acceptable.
+- Bounds checks establish an index range, not allocation validity, initialization,
+  alignment, lifetime, or aliasing guarantees. A null check alone is insufficient.
+- Safe constructors and methods must preserve every invariant relied on by unsafe
+  internals. Reducing a block's size does not reduce that responsibility.
+- `unsafe_op_in_unsafe_fn` is **warn-by-default** in Rust 2024, not a hard error.
+  Enable it at `deny` when the project wants explicit blocks enforced as errors.
+- Consecutive operations sharing one safety argument may use one small block.
 
-## When a Larger Block Is Acceptable
+## Sources
 
-If two unsafe operations share the *exact same precondition* and separating them would require re-stating the identical justification, a single block covering both is fine — but it should still be the minimum necessary scope.
+- [Google Rust Style Guide](https://google.github.io/styleguide/rustguide.html) — unsafe abstractions and technical justification
+- [Comprehensive Rust: Dereferencing Raw Pointers](https://google.github.io/comprehensive-rust/unsafe-rust/dereferencing.html)
+- [Rust 2024 Edition Guide: unsafe operations in unsafe functions](https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html)
 
 ## See Also
 
-- [unsafe-safety-comment](unsafe-safety-comment.md) - write `// SAFETY:` above every unsafe block
-- [unsafe-send-sync-manual](unsafe-send-sync-manual.md) - document invariants when manually implementing Send/Sync
+- [unsafe-safety-comment](unsafe-safety-comment.md) - document safety preconditions and their proof
+- [unsafe-send-sync-manual](unsafe-send-sync-manual.md) - preserve cross-thread invariants

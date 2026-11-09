@@ -1,105 +1,108 @@
 # async-fn-in-trait
 
-> Use native `async fn` in traits (stable 1.75) instead of the `async_trait` macro
+> Prefer native async trait methods for static dispatch; use boxed futures when dynamic dispatch is needed
 
 ## Why It Matters
 
-Since Rust 1.75, you can write `async fn` directly inside trait definitions (AFIT — async functions in traits). This eliminates the `#[async_trait]` proc-macro dependency and removes the hidden `Box<dyn Future>` allocation it inserts on every call. Fewer allocations, no macro expansion overhead, and no extra crate to audit. However, native async fn in traits carries two precise caveats you must understand before migrating.
+Native `async fn` in traits has been stable since Rust 1.75 and does not require boxing the returned future. Dynamic dispatch and a `Send` future are separate API decisions. `trait-variant` can add `Send` bounds, but does not erase or box the future and does not make an async method dyn-compatible.
 
 ## Bad
 
 ```rust
-// requires async_trait crate; boxes every future on the heap
-use async_trait::async_trait;
-
-#[async_trait]
+#[trait_variant::make(RepoSend: Send)]
 trait Repo {
-    async fn get(&self, id: u64) -> anyhow::Result<String>;
-    async fn save(&self, value: String) -> anyhow::Result<()>;
+    async fn get(&self, id: u64) -> String;
 }
 
-struct PgRepo;
-
-#[async_trait]
-impl Repo for PgRepo {
-    async fn get(&self, id: u64) -> anyhow::Result<String> {
-        Ok(format!("row-{id}"))
-    }
-
-    async fn save(&self, value: String) -> anyhow::Result<()> {
-        let _ = value;
-        Ok(())
-    }
-}
+// Still invalid: RepoSend returns an opaque impl Future.
+fn use_dyn(_: Box<dyn RepoSend>) {}
 ```
 
 ## Good
 
 ```rust
-// native async fn in traits — no macro, no boxing
 trait Repo {
-    async fn get(&self, id: u64) -> anyhow::Result<String>;
-    async fn save(&self, value: String) -> anyhow::Result<()>;
+    async fn get(&self, id: u64) -> String;
 }
 
-struct PgRepo;
+struct MemoryRepo;
 
-impl Repo for PgRepo {
-    async fn get(&self, id: u64) -> anyhow::Result<String> {
-        Ok(format!("row-{id}"))
-    }
-
-    async fn save(&self, value: String) -> anyhow::Result<()> {
-        let _ = value;
-        Ok(())
+impl Repo for MemoryRepo {
+    async fn get(&self, id: u64) -> String {
+        format!("row-{id}")
     }
 }
+
+async fn load(repo: &impl Repo) -> String {
+    repo.get(1).await
+}
 ```
 
-## Caveats
+## Dynamic Dispatch
 
-**Caveat 1 — not dyn-compatible.** Native async fn in traits is not yet object-safe. You cannot write `Box<dyn Repo>` with the definition above. For dynamic dispatch you have two options:
-
-- Keep `#[async_trait]` (it boxes the future, which makes the trait object-safe).
-- Use the `trait-variant` crate's `#[trait_variant::make]` macro, which generates a boxed-future variant alongside your native async trait.
+Use `async-trait` on both the trait and implementations, or return `Pin<Box<dyn Future<Output = T> + Send + '_>>` explicitly. Other dyn-compatibility rules still apply. The macro is appropriate when runtime polymorphism is required; it is not inherently an anti-pattern.
 
 ```rust
-// using trait-variant to get both a static and a dyn-compatible variant
-#[trait_variant::make(RepoSend: Send)]
-trait Repo {
-    async fn get(&self, id: u64) -> anyhow::Result<String>;
+#[async_trait::async_trait]
+trait Repo: Send + Sync {
+    async fn get(&self, id: u64) -> String;
 }
 
-// `RepoSend` is the Send-bounded version; it IS dyn-compatible via boxing
-fn make_repo() -> Box<dyn RepoSend> {
-    // ...
-    # unimplemented!()
+struct MemoryRepo;
+
+#[async_trait::async_trait]
+impl Repo for MemoryRepo {
+    async fn get(&self, id: u64) -> String {
+        format!("row-{id}")
+    }
+}
+
+fn make_repo() -> Box<dyn Repo> {
+    Box::new(MemoryRepo)
 }
 ```
 
-**Caveat 2 — futures are not `Send` by default.** On a multi-threaded Tokio runtime, spawned tasks require `Send` futures. The auto-generated future from a native `async fn` in a trait captures `&self` but does not promise `Send`. If you need `Send`, either:
+## Send Bounds for Static Dispatch
 
-- Use `#[trait_variant::make(TraitNameSend: Send)]` from the `trait-variant` crate to generate a `Send`-bounded variant.
-- Bound the return type explicitly: `fn get(&self, id: u64) -> impl Future<Output = anyhow::Result<String>> + Send`.
+An abstract native async trait method does not promise that its future is `Send`. Make that promise explicit when callers need to spawn it. For a future that borrows `&self`, the implementation will generally need `Self: Sync` too.
 
 ```rust
-// explicit Send bound on the return future
-trait Repo {
-    fn get(&self, id: u64) -> impl Future<Output = anyhow::Result<String>> + Send;
+use std::future::Future;
+
+trait Repo: Send + Sync {
+    fn get(&self, id: u64) -> impl Future<Output = String> + Send;
+}
+
+struct MemoryRepo;
+
+impl Repo for MemoryRepo {
+    async fn get(&self, id: u64) -> String {
+        format!("row-{id}")
+    }
+}
+
+fn spawn_load(repo: impl Repo + 'static) -> tokio::task::JoinHandle<String> {
+    tokio::spawn(async move { repo.get(1).await })
 }
 ```
 
-## When to Use Each Approach
+Alternatively, `#[trait_variant::make(RepoSend: Send)]` generates a variant with `Send` bounds for static dispatch. It does not provide the boxed-future adapter shown above.
 
-| Scenario | Recommended approach |
+| Scenario | Approach |
 |---|---|
-| Static dispatch only (generics, `impl Trait`) | Native `async fn` in trait |
-| Need `dyn Trait` | `#[async_trait]` or `trait-variant` |
-| Multi-threaded Tokio, spawned tasks | `trait-variant` `Send` variant or explicit `+ Send` |
-| Single-threaded runtime / `LocalSet` | Native `async fn` in trait (no `Send` needed) |
+| Static dispatch, no Send requirement | Native `async fn` in trait |
+| `dyn Trait` | `async-trait` or explicit boxed futures |
+| `tokio::spawn` on any runtime flavor | Explicit `+ Send` or a `trait-variant` Send variant, plus required ownership bounds |
+| Direct await or local tasks | Native async methods can return non-Send futures; `spawn_local` requires a local execution context |
+
+## Sources
+
+- [Rust Reference: dyn compatibility](https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility)
+- [trait-variant](https://docs.rs/trait-variant/latest/trait_variant/)
+- [async-trait](https://docs.rs/async-trait/latest/async_trait/)
 
 ## See Also
 
-- [anti-type-erasure](anti-type-erasure.md) - prefer `impl Trait` over `Box<dyn Trait>` when possible
-- [async-async-fn-bounds](async-async-fn-bounds.md) - use `AsyncFn` bounds for higher-order async functions
-- [async-tokio-runtime](async-tokio-runtime.md) - use Tokio for production async runtime
+- [trait-object-safety](trait-object-safety.md) - Dyn-compatibility requirements
+- [async-async-fn-bounds](async-async-fn-bounds.md) - Higher-order async functions
+- [async-tokio-runtime](async-tokio-runtime.md) - Runtime selection

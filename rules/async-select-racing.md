@@ -102,8 +102,9 @@ async fn select_example() {
     }
 }
 
-// Futures are cancelled at their next .await point
-// For immediate cancellation, futures must be cancel-safe
+// select! drops losing branch futures when a winning branch completes.
+// Cancellation safety means dropping and restarting preserves progress.
+// A branch that blocks inside poll still prevents select! from progressing.
 ```
 
 ## Biased Selection
@@ -135,12 +136,11 @@ async fn event_loop(
                 println!("Shutting down");
                 break;
             }
-            Some(cmd) = commands.recv() => {
-                process_command(cmd).await;
-            }
-            else => {
-                // commands channel closed
-                break;
+            command = commands.recv() => {
+                match command {
+                    Some(cmd) => process_command(cmd).await,
+                    None => break,
+                }
             }
         }
     }
@@ -196,3 +196,4 @@ loop {
 - [async-cancellation-token](./async-cancellation-token.md) - Cancellation patterns
 - [async-join-parallel](./async-join-parallel.md) - All futures, not racing
 - [async-bounded-channel](./async-bounded-channel.md) - Channel operations in select
+- [async-cancel-safety](async-cancel-safety.md) - Preserve progress and deadlines

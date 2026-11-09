@@ -4,7 +4,7 @@
 
 ## Why It Matters
 
-Types that implement `Copy` are implicitly duplicated on assignment instead of moved. This eliminates the need for explicit `.clone()` calls and makes the code more ergonomic. For small types (generally ≤16 bytes), copying is as fast or faster than moving a pointer.
+Types that implement `Copy` can be implicitly duplicated rather than moved. Use it when duplication matches the type's value semantics and retaining the original is useful. Size can guide performance decisions, but `Copy` does not make copying free and Rust imposes no size limit on the trait.
 
 ## Bad
 
@@ -55,7 +55,8 @@ let d2 = distance(origin, target); // Still works!
 A type can implement `Copy` only if:
 1. All fields implement `Copy`
 2. No custom `Drop` implementation
-3. No heap-allocated data (`String`, `Vec`, `Box`, etc.)
+
+Owning types such as `String`, `Vec<T>`, and `Box<T>` are not `Copy`; a shared reference to them can still be `Copy`.
 
 ```rust
 // ✅ Can be Copy
@@ -85,11 +86,13 @@ impl Drop for FileHandle {
 
 ## Size Guidelines
 
-| Size | Recommendation |
-|------|----------------|
-| ≤ 16 bytes | Implement `Copy` |
-| 17-64 bytes | Consider `Copy`, benchmark if critical |
-| > 64 bytes | Probably don't, prefer references |
+These are rough review heuristics, not Rust trait limits or portable performance thresholds. First check that implicit duplication fits the public contract; benchmark copies versus borrowing when the difference matters.
+
+| Size | Consideration |
+|------|---------------|
+| Small scalar-like values | `Copy` is often ergonomic when value semantics fit |
+| Larger aggregates | Consider call patterns, copy frequency, and borrowing costs |
+| Any size | All fields must be `Copy` and the type must not implement `Drop` |
 
 ```rust
 use std::mem::size_of;
@@ -100,9 +103,9 @@ struct SmallId(u64); // 8 bytes ✅
 #[derive(Clone, Copy)]
 struct Rect { x: f32, y: f32, w: f32, h: f32 } // 16 bytes ✅
 
-#[derive(Clone)] // No Copy - 72 bytes
+#[derive(Clone, Copy)] // Legal: all fields are Copy, regardless of size
 struct Transform {
-    matrix: [[f64; 3]; 3], // 72 bytes, too large
+    matrix: [[f64; 3]; 3], // Whether to expose Copy is an API/design choice
 }
 ```
 
@@ -114,7 +117,7 @@ Standard library types that are `Copy`:
 - Raw pointers: `*const T`, `*mut T`
 - Function pointers: `fn(T) -> U`
 - Tuples of `Copy` types: `(i32, f64)`
-- Arrays of `Copy` types: `[u8; 32]`
+- Arrays of `Copy` types at any length: `[u8; 32]`, `[u8; 1024]`
 - `Option<T>` where `T: Copy`
 - `PhantomData<T>`
 

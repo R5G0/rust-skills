@@ -91,17 +91,19 @@ if foo() == bar() { }  // Both return (), always true
 # Basic check
 cargo clippy
 
-# With all warnings as errors
+# With all Clippy warnings as errors
 cargo clippy -- -D warnings
 
 # Check specific lint category
 cargo clippy -- -W clippy::correctness
 
-# In CI (fail on warnings)
-cargo clippy -- -D warnings -D clippy::correctness
+# In CI: Cargo 1.97+ warning policy also applies to Clippy
+# .cargo/config.toml → [build] warnings = "deny"
+cargo clippy -- -D clippy::correctness
 ```
 
 ## See Also
 
 - [lint-warn-suspicious](lint-warn-suspicious.md) - Warn on suspicious code
 - [lint-warn-perf](lint-warn-perf.md) - Warn on performance issues
+- [lint-warnings-deny-config](lint-warnings-deny-config.md) - Deny emitted warnings in CI via Cargo config

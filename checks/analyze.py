@@ -13,9 +13,10 @@ Buckets per example:
 Modes:
   analyze.py check.json                      print summary + suspect details
   analyze.py check.json --emit-baseline      print one signature per suspect
-  analyze.py check.json --check-baseline F   exit 1 if any suspect is not in F
+  analyze.py check.json --check-baseline F   require exact suspect parity with F
 A signature is `file :: section :: sorted(error-tokens)` so it is stable across
-line-number edits. CI gates on signatures absent from the committed baseline.
+line-number edits. New and stale entries fail so fixed examples cannot leave
+allowlist entries that mask regressions. Incomplete Cargo runs also fail.
 """
 import json, sys, pathlib, collections
 
@@ -60,7 +61,9 @@ def token(d):
 
 def parse(path):
     errors = collections.defaultdict(list)
-    with open(path) as fh:
+    observed = set()
+    finished = False
+    with open(path, encoding="utf-8") as fh:
         for raw in fh:
             raw = raw.strip()
             if not raw.startswith("{"):
@@ -69,6 +72,11 @@ def parse(path):
                 rec = json.loads(raw)
             except json.JSONDecodeError:
                 continue
+            if rec.get("reason") == "build-finished":
+                finished = True
+            target = rec.get("target") or {}
+            if "example" in target.get("kind", []):
+                observed.add(target.get("name"))
             if rec.get("reason") != "compiler-message":
                 continue
             msg = rec.get("message", {})
@@ -77,6 +85,13 @@ def parse(path):
             tgt = (rec.get("target") or {}).get("name")
             if tgt:
                 errors[tgt].append(msg)
+    missing = sorted(set(manifest) - observed)
+    if not finished or missing:
+        raise SystemExit(
+            f"INCOMPLETE: Cargo did not finish checking every example "
+            f"(build-finished={finished}, missing={len(missing)}): "
+            + ", ".join(missing[:10])
+        )
     return errors
 
 def classify(errors):
@@ -111,16 +126,18 @@ def main():
         return
     if "--check-baseline" in args:
         bpath = args[args.index("--check-baseline") + 1]
-        base = set(l.strip() for l in open(bpath) if l.strip() and not l.startswith("#"))
-        new = [s for s in sigs if s not in base]
-        if new:
-            print(f"FAIL: {len(new)} new compile-suspect(s) not in baseline:\n")
+        base = set(l.strip() for l in open(bpath, encoding="utf-8") if l.strip() and not l.startswith("#"))
+        current = set(sigs)
+        new = sorted(current - base)
+        stale = sorted(base - current)
+        if new or stale:
+            print(f"FAIL: baseline differs ({len(new)} new, {len(stale)} stale):\n")
             print("\n".join(f"  + {s}" for s in new))
-            print("\nIf these are real bugs, fix the example. If they are new "
-                  "intentional fragments, regenerate the baseline:\n"
+            print("\n".join(f"  - {s}" for s in stale))
+            print("\nFix real bugs, then regenerate and review exact parity:\n"
                   "  python3 analyze.py check.json --emit-baseline > baseline.txt")
             sys.exit(1)
-        print(f"OK: no new compile suspects ({len(sigs)} known, all in baseline)")
+        print(f"OK: exact compile-suspect baseline parity ({len(sigs)} reviewed)")
         return
 
     checked = len(manifest); failed = len(errors)
