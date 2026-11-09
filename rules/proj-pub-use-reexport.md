@@ -1,162 +1,80 @@
 # proj-pub-use-reexport
 
-> Use pub use for clean public API
+> Choose deliberate public paths and explicit reexports without accidentally expanding the API
 
 ## Why It Matters
 
-`pub use` re-exports items from submodules at the current module level. This creates a flat, ergonomic public API while keeping internal organization flexible. Users import from one place; you can reorganize internals without breaking their code.
+Reexports can separate a library's public organization from private implementation
+modules. They also create public compatibility commitments. A flat root is not
+always clearer than domain modules; choose documented entry points and avoid
+unnecessary aliases. Preserve already-supported paths when a project's migration
+policy requires compatibility.
 
 ## Bad
 
 ```rust
-// lib.rs - Deep module paths exposed
-pub mod error;
-pub mod config;
-pub mod client;
-pub mod types;
+pub mod storage {
+    pub struct Client;
+}
 
-// Users must write:
-use my_crate::error::MyError;
-use my_crate::config::Config;
-use my_crate::client::http::HttpClient;
-use my_crate::types::request::Request;
+// Two public paths for the same item, added without an API design reason.
+pub use storage::Client;
 ```
 
 ## Good
 
 ```rust
-// lib.rs - Flat public API
-mod error;
-mod config;
-mod client;
-mod types;
-
-pub use error::MyError;
-pub use config::Config;
-pub use client::http::HttpClient;
-pub use types::request::Request;
-
-// Users write:
-use my_crate::{Config, HttpClient, MyError, Request};
-```
-
-## Pattern: Selective Re-export
-
-```rust
-// src/lib.rs
-mod internal;
-
-// Only re-export what users need
-pub use internal::{
-    PublicStruct,
-    PublicTrait,
-    public_function,
-};
-
-// Keep implementation details hidden
-// internal::helper_function is NOT exported
-```
-
-## Pattern: Rename on Re-export
-
-```rust
-mod v1 {
-    pub struct Client { /* old implementation */ }
+mod storage {
+    /// A connection to the backing store.
+    pub struct Client;
 }
 
-mod v2 {
-    pub struct Client { /* new implementation */ }
-}
-
-// Re-export with clear names
-pub use v2::Client;
-pub use v1::Client as LegacyClient;
+// One deliberate public entry point. Rustdoc may inline private-module
+// reexports automatically; this annotation makes the intent explicit.
+#[doc(inline)]
+pub use storage::Client;
 ```
 
-## Pattern: Prelude Module
+A public domain module with no root alias is equally valid. Internal reexports
+used to assemble a facade and hidden macro-support paths do not create the same
+user-facing ambiguity.
+
+## Dependency Types
+
+A third-party type in a public signature couples callers to that dependency's
+API and type identity even without a reexport. Adding `pub use` does not remove
+this coupling. Expose standard types where practical, or own the boundary with
+a justified wrapper. Deliberate ecosystem facades can reexport dependency types
+when they accept and maintain that commitment.
 
 ```rust
-// src/lib.rs
-pub mod prelude {
-    pub use crate::{
-        Config,
-        Client,
-        Error,
-        Request,
-        Response,
-    };
-}
-
-// Users can glob import common items
-use my_crate::prelude::*;
-```
-
-## Pattern: Feature-Gated Re-exports
-
-```rust
-// src/lib.rs
-mod core;
-mod serde_impl;
-mod async_impl;
-
-pub use core::*;
-
-#[cfg(feature = "serde")]
-pub use serde_impl::*;
-
-#[cfg(feature = "async")]
-pub use async_impl::*;
-```
-
-## Comparison: Module Structure vs Public API
-
-```rust
-// Internal structure (complex)
-src/
-├── transport/
-│   ├── http/
-│   │   └── client.rs    // HttpClient
-│   └── grpc/
-│       └── client.rs    // GrpcClient
-├── auth/
-│   └── token.rs         // Token
-└── lib.rs
-
-// Public API (flat)
-pub use transport::http::client::HttpClient;
-pub use transport::grpc::client::GrpcClient;
-pub use auth::token::Token;
-
-// Users see:
-my_crate::HttpClient
-my_crate::GrpcClient
-my_crate::Token
-```
-
-## Re-export External Types
-
-```rust
-// Re-export dependencies users will need
+// A deliberate ecosystem facade; keep its external origin visible in docs.
+#[doc(no_inline)]
 pub use bytes::Bytes;
-pub use http::{Method, StatusCode};
-
-// Now users don't need to depend on these crates directly
 ```
 
-## Glob Re-exports
+For your own items, use `#[doc(inline)]` when it improves discovery at the
+documented entry point. For external types, retaining links to their original
+crate helps users understand provenance. Review the rendered rustdoc output
+rather than applying attributes mechanically.
 
-Use sparingly:
+## Explicit Export Lists
 
-```rust
-// OK for internal modules
-pub use internal::*;
+Prefer named reexports over `pub use module::*`: a glob can silently grow the
+API when a new item is added to the module or its dependency. Small intentional
+forwarding modules may justify a glob; review their resulting public surface.
+A prelude is optional and should solve repeated import friction, rather than
+being created for every library.
 
-// Careful with external crates - pollutes namespace
-pub use serde::*;  // Usually too broad
-```
+## Sources
+
+- [Microsoft M-SINGLE-ITEM-PATH](https://microsoft.github.io/rust-guidelines/guidelines/ai/index.html#M-SINGLE-ITEM-PATH)
+- [Microsoft M-FOREIGN-REEXPORTS](https://microsoft.github.io/rust-guidelines/guidelines/libs/interop/index.html#M-FOREIGN-REEXPORTS)
+- [Microsoft M-DOC-INLINE](https://microsoft.github.io/rust-guidelines/guidelines/docs/index.html#M-DOC-INLINE)
+- [Rustdoc doc attribute](https://doc.rust-lang.org/rustdoc/write-documentation/the-doc-attribute.html)
 
 ## See Also
 
-- [proj-prelude-module](./proj-prelude-module.md) - Prelude pattern
-- [proj-pub-crate-internal](./proj-pub-crate-internal.md) - Internal visibility
-- [api-non-exhaustive](./api-non-exhaustive.md) - API stability
+- [api-public-dependencies](api-public-dependencies.md) - Public dependency contracts
+- [proj-pub-crate-internal](proj-pub-crate-internal.md) - Internal visibility
+- [proj-prelude-module](proj-prelude-module.md) - Conditional prelude design

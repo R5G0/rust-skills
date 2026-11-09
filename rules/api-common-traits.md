@@ -1,10 +1,10 @@
 # api-common-traits
 
-> Implement standard traits (Debug, Clone, PartialEq, etc.) for public types
+> Implement standard traits when their semantics fit the public type
 
 ## Why It Matters
 
-Standard traits make your types interoperable with the Rust ecosystem. `Debug` enables `println!("{:?}")` and error messages. `Clone` allows explicit duplication. `PartialEq` enables `==`. Without these, users can't use your types in common patterns like testing, collections, or debugging.
+Standard traits make types interoperable with collections, diagnostics, and generic algorithms. Their implementations also promise semantics: `Clone` duplicates a value or handle, `Eq` requires reflexivity, and `Hash` must agree with equality. Choose those contracts deliberately rather than deriving every trait just because the fields permit it.
 
 ## Bad
 
@@ -22,7 +22,8 @@ println!("{:?}", point);  // Error: Debug not implemented
 if point1 == point2 { }  // Error: PartialEq not implemented
 
 // Can't use in HashMap
-let mut map: HashMap<Point, Value> = HashMap::new();  // Error: Hash not implemented
+let mut map: HashMap<Point, Value> = HashMap::new();
+map.insert(point, value); // Insertion needs Eq + Hash; constructing the map alone does not.
 
 // Can't clone
 let copy = point.clone();  // Error: Clone not implemented
@@ -53,15 +54,15 @@ let mut map: HashMap<UserId, User> = HashMap::new();
 
 | Trait | Derive When | Requirements |
 |-------|-------------|--------------|
-| `Debug` | Always for public types | All fields implement Debug |
-| `Clone` | Type can be duplicated | All fields implement Clone |
+| `Debug` | Public diagnostic output is useful | Derive needs Debug fields; redact secrets manually |
+| `Clone` | Duplicating the value or shared handle is meaningful | Derive needs Clone fields; honor resource semantics |
 | `Copy` | Small, simple types | All fields implement Copy, no Drop |
 | `PartialEq` | Comparison makes sense | All fields implement PartialEq |
-| `Eq` | Total equality | PartialEq, no floating-point fields |
-| `Hash` | Used as HashMap/HashSet key | Eq, consistent with PartialEq |
-| `Default` | Sensible default exists | All fields implement Default |
+| `Eq` | Equality is reflexive as well as symmetric and transitive | PartialEq; plain floating-point equality does not satisfy this |
+| `Hash` | Hashing is useful, such as for map keys | Equal values must hash equally; HashMap keys additionally need Eq |
+| `Default` | Sensible default exists | Derive needs Default fields; a manual implementation can choose values |
 | `PartialOrd` | Ordering makes sense | PartialEq, all fields implement PartialOrd |
-| `Ord` | Total ordering | Eq + PartialOrd, no floating-point |
+| `Ord` | A total ordering is defined | Eq + PartialOrd with consistent ordering; floats need an explicit policy |
 
 ## Common Trait Bundles
 
@@ -133,7 +134,7 @@ pub struct ApiResponse {
 }
 
 // With custom serialization
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Config {
     #[serde(default)]
     pub verbose: bool,
@@ -143,20 +144,24 @@ pub struct Config {
 }
 ```
 
-## Minimum Recommended
+## Choose Contracts by Type Role
 
-```rust
-// At minimum, public types should have:
-#[derive(Debug, Clone, PartialEq)]
-pub struct MyType { ... }
+Public value types often benefit from Debug and meaningful comparison. A unique
+resource may intentionally have no Clone implementation; a client handle may
+clone by sharing one underlying connection pool. Document that distinction and
+do not silently recreate the resource. Implement shared ownership only when the
+service actually needs it, rather than putting every type behind an Arc.
 
-// Add based on use case:
-// + Eq, Hash       → for HashMap keys
-// + Ord, PartialOrd → for BTreeMap, sorting
-// + Default        → for Option::unwrap_or_default()
-// + Copy           → for small value types
-// + Serialize      → for serialization
-```
+Debug output must not expose credentials or other sensitive fields. Do not derive
+PartialEq for a service merely to make tests convenient when equality has no
+useful contract. Likewise, provide Default only when callers can use the result
+meaningfully; it need not perform hidden I/O or manufacture invalid state.
+
+## Sources
+
+- [Microsoft: M-SERVICES-CLONE](https://microsoft.github.io/rust-guidelines/guidelines/libs/ux/index.html#M-SERVICES-CLONE) - shared service handles when required
+- [Google Rust Style Guide](https://google.github.io/styleguide/rustguide.html) - standard traits in context
+- [Rust API Guidelines: interoperability](https://rust-lang.github.io/api-guidelines/interoperability.html)
 
 ## See Also
 

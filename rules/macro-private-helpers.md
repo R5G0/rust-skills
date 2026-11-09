@@ -4,7 +4,7 @@
 
 ## Why It Matters
 
-Exported macros often need to call helper functions, use types, or invoke traits at the call site. Placing those helpers directly in the crate's public API pollutes the surface with implementation details and freezes them under semver — any rename or removal becomes a breaking change. Routing all generated references through a `#[doc(hidden)] pub mod __private` keeps the public API clean while letting you evolve internals freely.
+Exported macros need helper paths that remain accessible from downstream expansions. A `#[doc(hidden)] pub mod __private` keeps those helpers out of rendered documentation, but does not make them private or remove compatibility obligations to already-supported generated code. Coordinate macro/runtime versions when evolving this interface; hiding documentation alone does not make changes safe.
 
 This is the pattern used by `serde`, `thiserror`, and many derive crates.
 
@@ -89,7 +89,7 @@ impl ::mycrate::__private::Describe for MyStruct {
 - Name the module `__private` (double-underscore) — it signals "not part of the public API" by convention across the ecosystem.
 - Always pair with `#[doc(hidden)]` so the module is invisible in rendered documentation.
 - Reference items as `$crate::__private::...` inside macros — never as bare paths.
-- Document in your crate's CHANGELOG or README that `__private` is exempt from semver guarantees.
+- Document the helper's internal status and keep released macro/runtime combinations compatible; use exact companion-version pins when generated code depends on a changing helper protocol.
 
 ## See Also
 

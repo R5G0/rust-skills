@@ -8,7 +8,7 @@ category is preserved from the current SKILL.md and any new rules are appended.
   python3 checks/gen_index.py            rewrite SKILL.md + README counts
   python3 checks/gen_index.py --check    exit 1 if they are out of date (CI)
 """
-import re, sys, pathlib
+import re, sys, pathlib, collections
 
 HERE = pathlib.Path(__file__).resolve().parent
 ROOT = HERE.parent
@@ -104,6 +104,20 @@ def render_readme(text, total, ncat):
     text = re.sub(r"categories-\d+", f"categories-{ncat}", text)
     text = re.sub(r"\d+ Rust rules", f"{total} Rust rules", text)
     text = re.sub(r"\d+ rules split into \d+ categories", f"{total} rules split into {ncat} categories", text)
+    # README uses shorter display names than the full priority table.
+    prefixes = {title: prefix for prefix, title, _ in CATEGORIES}
+    prefixes.update({
+        "Memory": "mem-", "Async": "async-", "Optimization": "opt-",
+        "Numeric & Arithmetic": "num-", "Naming": "name-", "Docs": "doc-",
+        "Performance": "perf-", "Linting": "lint-",
+    })
+    counts = collections.Counter(prefix_of(path.stem) for path in RULES.glob("*.md"))
+    def update_count(match):
+        title = match.group(1)
+        if title not in prefixes:
+            return match.group(0)
+        return f"| **{title}** | {counts[prefixes[title]]} |"
+    text = re.sub(r"\| \*\*([^*]+)\*\* \| \d+ \|", update_count, text)
     return text
 
 def main():

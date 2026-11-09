@@ -1,44 +1,40 @@
 # proj-prelude-module
 
-> Create prelude module for common imports
+> Provide a prelude only when recurring imports justify the extra public surface
 
 ## Why It Matters
 
 A `prelude` module collects the most commonly used types and traits for glob import. Users write `use my_crate::prelude::*` instead of many individual imports. This follows the pattern established by `std::prelude`.
 
+Treat this as an optional ecosystem convention, not a default scaffolding step. Microsoft recommends avoiding custom preludes to keep item provenance and public paths clear. Prefer explicit imports for a small library; a mature trait-heavy library can justify a documented prelude when the ergonomic benefit outweighs name collisions and future API growth.
+
 ## Bad
 
 ```rust
-// Users must import everything individually
-use my_crate::Client;
-use my_crate::Config;
-use my_crate::Error;
-use my_crate::Request;
-use my_crate::Response;
-use my_crate::traits::Handler;
-use my_crate::traits::Middleware;
-use my_crate::types::Method;
+// A new prelude exposes unrelated dependencies without demonstrated demand.
+pub mod prelude {
+    pub use std::collections::*;
+    pub use std::io::*;
+    pub use std::sync::*;
+}
 ```
 
 ## Good
 
 ```rust
-// src/lib.rs
-pub mod prelude {
-    pub use crate::{
-        Client,
-        Config,
-        Error,
-        Request,
-        Response,
-    };
-    pub use crate::traits::{Handler, Middleware};
-    pub use crate::types::Method;
+mod client {
+    pub struct Client;
+    pub struct Config;
 }
 
-// Users write:
-use my_crate::prelude::*;
+// A small API is easy to use with explicit imports.
+use client::{Client, Config};
+
+fn configure(_client: &Client, _config: &Config) {}
 ```
+
+The optional prelude patterns below apply when repeated trait imports create a
+real usability problem; they are not a requirement for every library.
 
 ## What to Include
 

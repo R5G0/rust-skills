@@ -1,10 +1,12 @@
 # err-anyhow-app
 
-> Use `anyhow` for application error handling
+> Consider anyhow at reporting boundaries; retain typed errors where callers need structured recovery
 
 ## Why It Matters
 
 Applications often don't need typed errors - they just need to report what went wrong with good context. `anyhow` provides easy error handling with context chaining, backtraces, and conversion from any error type.
+
+This is an option, not an application-wide requirement. Keep typed domain and protocol errors when recovery, stable HTTP codes, or repository conventions depend on them. Error erasure belongs at a reporting boundary after structured decisions have been made. Microsoft's M-APP-ERROR explicitly permits application error crates; it does not require replacing working typed contracts.
 
 ## Bad
 
@@ -167,13 +169,15 @@ fn handle_error(err: anyhow::Error) {
 | Situation | Use |
 |-----------|-----|
 | Library public API | `thiserror` |
-| Application code | `anyhow` |
-| CLI tools | `anyhow` |
+| Application reporting boundary | `anyhow` can simplify reporting |
+| CLI reporting boundary | `anyhow` can simplify reporting |
 | Internal library code | Either |
 | Need to match error variants | `thiserror` |
 | Just need to report errors | `anyhow` |
 
 ## See Also
+
+Source: [Microsoft M-APP-ERROR](https://microsoft.github.io/rust-guidelines/guidelines/apps/index.html#M-APP-ERROR).
 
 - [err-thiserror-lib](err-thiserror-lib.md) - Use thiserror for libraries
 - [err-context-chain](err-context-chain.md) - Add context to errors

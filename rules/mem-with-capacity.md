@@ -151,6 +151,14 @@ let mut rarely_used = Vec::new();  // OK if rarely grown
 
 ## See Also
 
+Treat sizes derived from untrusted inputs as requests to validate, not permission
+to allocate without bounds. Check arithmetic and enforce resource budgets before
+reserving. Use fallible reservation when the API can report allocation failure.
+Shrinking a reusable collection after every use can undo the intended allocation
+savings; retained capacity should follow the object's actual lifetime and workload.
+
+Source: [Microsoft M-INITIAL-CAPACITY and M-SHRINK-TO-FIT](https://microsoft.github.io/rust-guidelines/guidelines/performance/index.html#M-INITIAL-CAPACITY).
+
 - [mem-reuse-collections](mem-reuse-collections.md) - Reuse collections with clear()
 - [mem-smallvec](mem-smallvec.md) - Use SmallVec for usually-small collections
 - [perf-extend-batch](perf-extend-batch.md) - Use extend() for batch insertions

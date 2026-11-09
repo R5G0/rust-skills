@@ -4,7 +4,7 @@
 
 ## Why It Matters
 
-`Vec<T>` stores three words: pointer, length, and capacity. When you know a collection won't grow, `Box<[T]>` stores only pointer and length (2 words), saving 8 bytes per instance. More importantly, it communicates intent: "this data is fixed-size." For large numbers of fixed collections, this adds up.
+`Vec<T>` retains a capacity field so it can grow. A boxed slice owns a fixed-length sequence without retaining spare Vec capacity. On common 64-bit targets its handle uses two words rather than three; measure actual size on the target instead of assuming an eight-byte saving everywhere. The elements remain mutable through exclusive access: fixed length does not mean immutable data.
 
 ## Bad
 
@@ -65,11 +65,10 @@ let vec_again: Vec<i32> = boxed.into_vec();
 // From iterator
 let boxed: Box<[i32]> = (0..100).collect::<Vec<_>>().into_boxed_slice();
 
-// Shrink Vec first if it has excess capacity
+// into_boxed_slice already discards excess capacity; no preliminary shrink needed.
 let mut vec = Vec::with_capacity(1000);
 vec.extend(0..10);
-vec.shrink_to_fit();  // Reduce capacity to length
-let boxed = vec.into_boxed_slice();  // Now no wasted allocation
+let boxed = vec.into_boxed_slice();
 ```
 
 ## When to Use What
@@ -81,9 +80,11 @@ let boxed = vec.into_boxed_slice();  // Now no wasted allocation
 | `[T; N]` | Fixed-size, stack-allocated, size known at compile time |
 | `&[T]` | Borrowed view, don't need ownership |
 
-## Box<str> for Immutable Strings
+## Box<str> for Fixed-Length Owned Text
 
-Same principle applies to strings:
+The same handle-size tradeoff applies to strings. The following size assertions
+describe a common 64-bit target, not a portable ABI. Box<str> cannot grow in
+place, but its contents can be changed through suitable mutable string APIs.
 
 ```rust
 use std::mem::size_of;
@@ -133,6 +134,8 @@ impl Cache {
 ```
 
 ## See Also
+
+Source: [Microsoft M-BOX-DST](https://microsoft.github.io/rust-guidelines/guidelines/performance/index.html#M-BOX-DST). Compare retained memory against conversion/reallocation cost; keep Vec capacity when future growth or reuse benefits from it.
 
 - [mem-with-capacity](./mem-with-capacity.md) - Pre-allocating when size is known
 - [own-slice-over-vec](./own-slice-over-vec.md) - Using slices in function parameters

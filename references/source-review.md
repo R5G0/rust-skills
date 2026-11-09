@@ -16,7 +16,7 @@ Base: leonardomso/rust-skills at
 | [Issue #10](https://github.com/leonardomso/rust-skills/issues/10) | Open | Remove compulsory deep clones and false Rc-to-Send claims; also correct the issue's implication that ordinary borrows cannot cross await |
 | [PR #5](https://github.com/leonardomso/rust-skills/pull/5) at `ce04df8988405e6b4ee25be3d32db1e31c1f6d83` | Closed, unmerged | Adopt six focused rules and relevant Rust 1.95–1.97 updates; pin example checking to 1.97.1 |
 | [PR #4](https://github.com/leonardomso/rust-skills/pull/4) at `791a2478cbf00f28d943bd18a2dbcbb5b008574b` | Closed, unmerged | Use targeted correctness ideas such as exact compile-baseline parity and conditional optimization guidance; do not wholesale import its 343-rule corpus or source-audit claims |
-| [Issue #3](https://github.com/leonardomso/rust-skills/issues/3) | Open | A Microsoft-guidance feature proposal, not a correctness requirement; the book/production corpus from PR #4 remains outside this pass |
+| [Issue #3](https://github.com/leonardomso/rust-skills/issues/3) | Open | Adopt selected Microsoft guidance with explicit context and compatibility limits; the Zero To Production book/production corpus from PR #4 remains outside this pass |
 | [Issue #9](https://github.com/leonardomso/rust-skills/issues/9) | Open | Node 18 installer failure belongs to the external installer; use a supported Node LTS for installation |
 | [PR #2](https://github.com/leonardomso/rust-skills/pull/2), [Issue #1](https://github.com/leonardomso/rust-skills/issues/1) | Merged / source inquiry | Already represented by the base corpus and attribution |
 
@@ -59,6 +59,18 @@ Additional teaching sources:
 Already-covered advice (newtypes, enum state parameters, standard traits,
 documentation and pattern matching) is retained without duplicate rules.
 
+## Microsoft guidance applied
+
+The requested Microsoft pass uses official v2026.6 at
+`9585e288d21d2da994a0550c926a09b62d79f8bd`. The
+[Microsoft mapping](microsoft-guidelines.md) records adopted rules, existing
+coverage and recommendations that remain conditional. It covers lint exceptions,
+public dependency contracts, interval APIs, testability, builds/features,
+FFI/panic safety, async work/storage, documentation and macro compatibility.
+
+This is a fresh selective review of the current official source, not an import
+of PR #4's older coverage ledger or its whole-corpus validation claims.
+
 ## Google policies not generalized
 
 - Chromium's ban on async/await, standard-library thread creation, and its
@@ -75,7 +87,7 @@ documentation and pattern matching) is retained without duplicate rules.
 The index and rule links are regenerated and checked. The compile harness uses
 Rust 1.97.1, edition 2024, x86_64-unknown-linux-gnu with a locked dependency graph.
 It classifies unresolved illustrative fragments separately and retains an
-explicit inherited suspect baseline (115 signatures after this pass, nine
+explicit inherited suspect baseline (113 signatures after this pass, eleven
 removed compared with PR #5). Both new and stale baseline signatures,
 and incomplete Cargo runs, fail validation. This is a regression gate, not proof
 of runtime behavior or soundness of the entire inherited corpus.

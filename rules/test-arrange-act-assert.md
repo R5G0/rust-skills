@@ -153,6 +153,17 @@ mod tests {
 }
 ```
 
+## Assert Behavior, Not Copied Definitions
+
+Derive expected results from requirements, an independent oracle, or meaningful
+properties. Repeating the implementation's expression in an assertion can pass
+even when both share the same bug. Merely checking that a constant equals the
+literal used to define it gives no independent confidence; a serialization,
+ordering, or boundary contract may make an assertion about that constant useful.
+Choose tests for observable risk rather than adding them to satisfy a count.
+
+Source: [Microsoft M-TAUTOLOGICAL-TESTS](https://microsoft.github.io/rust-guidelines/guidelines/ai/index.html#M-TAUTOLOGICAL-TESTS).
+
 ## See Also
 
 - [test-descriptive-names](./test-descriptive-names.md) - Test naming

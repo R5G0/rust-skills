@@ -9,7 +9,7 @@ A crate marked `proc-macro = true` in `Cargo.toml` compiles for the host (the bu
 The facade approach ensures:
 - Users add only `mycrate` as a dependency.
 - Generated code refers to types through `::mycrate::__private::...`, so the impl crate version is invisible.
-- Workspace dependency inheritance keeps both crates locked to the same version without repetition.
+- Exact companion-version pins keep a private generated-code protocol compatible; workspace inheritance avoids repeating those requirements.
 
 ## Bad
 
@@ -56,7 +56,7 @@ members = ["mycrate", "mycrate-derive"]
 resolver = "3"   # default for the 2024 edition; use "2" for 2021
 
 [workspace.dependencies]
-mycrate-derive = { path = "mycrate-derive", version = "0.1" }
+mycrate-derive = { path = "mycrate-derive", version = "=0.1.0" }
 syn  = { version = "2", features = ["derive"] }
 quote = "1"
 proc-macro2 = "1"
@@ -134,6 +134,21 @@ pub fn derive_greet(input: TokenStream) -> TokenStream {
     .into()
 }
 ```
+
+## Companion Compatibility
+
+If generated code calls a facade's private helper protocol, publish compatible
+companion versions together and use exact dependency pins to prevent a newer
+macro generating calls an older runtime cannot handle. Shared workspace
+inheritance alone does not lock published semver ranges. Independently usable
+macro crates do not need lockstep releases merely because they are proc macros.
+
+Keep generated public items and signature changes visible in the documented
+macro contract. A separate implementation crate is useful when substantial
+parsing/transformation logic benefits from ordinary library APIs; a third crate
+is not required for every small proc macro.
+
+Sources: [Microsoft M-MACRO-VERSION-PIN](https://microsoft.github.io/rust-guidelines/guidelines/macros/index.html#M-MACRO-VERSION-PIN), [M-PROC-IMPLIED-ITEMS](https://microsoft.github.io/rust-guidelines/guidelines/macros/index.html#M-PROC-IMPLIED-ITEMS).
 
 ## See Also
 

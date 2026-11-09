@@ -96,10 +96,8 @@ own-refcell-interior.md :: Good :: E0599
 perf-chain-avoid.md :: When Chain Is Fine :: E0106
 perf-extend-batch.md :: Good :: E0107
 perf-extend-batch.md :: Pattern: Building Strings :: E0428
-proj-feature-additive.md :: Good :: P:`#[panic_handler]` function required, but not,P:unwinding panics are not supported
 proj-mod-rs-dir.md :: Consistency Rule :: P:expected `;`, found `mod_module_files`,P:expected one of `.`, `;`,
 proj-pub-super-parent.md :: Good :: E0308
-test-mock-traits.md :: Good :: E0046
 type-enum-states.md :: Avoid Boolean Flags :: E0428
 type-generic-bounds.md :: Bound Placement :: P:non-item in item list
 type-generic-bounds.md :: Conditional Trait Implementation :: E0404

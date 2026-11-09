@@ -81,10 +81,18 @@ code can usually stay concrete until broader flexibility improves an actual use
 case. A public function alone does not require a generic parameter, and private
 code can still legitimately need polymorphism.
 
+Avoid making users name layers of implementation-specific service parameters
+when a concrete facade expresses the same contract. Preserve generics that
+provide useful composition or measured performance benefits. For essential
+service operations, an inherent method can improve discovery, with trait
+adapters forwarding to it; standard trait methods do not all need duplicate
+inherent APIs.
+
 ## Sources
 
 - [Google Rust Style Guide](https://google.github.io/styleguide/rustguide.html) — API context and trait versus inherent implementation
 - [Rust API Guidelines](https://rust-lang.github.io/api-guidelines/) — deliberate public contracts
+- [Microsoft: M-SIMPLE-ABSTRACTIONS, M-DI-HIERARCHY, and M-ESSENTIAL-FN-INHERENT](https://microsoft.github.io/rust-guidelines/guidelines/libs/ux/index.html#M-SIMPLE-ABSTRACTIONS) — service API complexity and discoverability
 
 ## See Also
 

@@ -1,70 +1,87 @@
 # proj-build-rs-minimal
 
-> Keep `build.rs` minimal, deterministic, and idempotent
+> Keep build scripts deterministic, track their inputs, and make packaged prerequisites explicit
 
 ## Why It Matters
 
-Build scripts run on every Cargo invocation that touches their crate. Cargo decides whether to re-run a build script based on `cargo::rerun-if-changed` and `cargo::rerun-if-env-changed` directives: if you emit none, Cargo re-runs the script on every build; if you emit overly broad ones, you force unnecessary recompiles. Non-determinism (timestamps, UUIDs, network fetches) breaks reproducible builds, caching, and offline workflows. Parsing `rustc --version` strings to detect capabilities is fragile; the `autocfg` crate performs capability probes safely by compiling small snippets against the actual toolchain.
+Cargo caches build-script results and reruns scripts when their tracked inputs change. A script that depends on untracked files, the author's checkout, ambient tools, or unpinned downloads can fail for downstream users or produce stale output. Minimize build-time work and verify the published package's build contract on its supported targets.
 
 ## Bad
 
 ```rust
-// build.rs — overly broad, non-deterministic, network-dependent
 use std::process::Command;
 
 fn main() {
-    // re-runs on every build because no rerun directives are emitted
-    // (Cargo default: re-run if ANY file changes)
-
-    // fragile: parses version string instead of probing capability
-    let output = Command::new("rustc").arg("--version").output().unwrap();
-    let version = String::from_utf8(output.stdout).unwrap();
-    if version.contains("1.8") {
-        println!("cargo::rustc-cfg=has_feature");
-    }
-
-    // network access breaks offline/reproducible builds
-    let _resp = reqwest::blocking::get("https://example.com/schema.json").unwrap();
+    // Assumes an undocumented tool and an untracked checkout file exist.
+    let output = Command::new("protoc")
+        .arg("../private-schemas/message.proto")
+        .output()
+        .expect("failed to run generator");
+    assert!(output.status.success());
 }
 ```
 
 ## Good
 
 ```rust
-// build.rs — narrow directives, capability probe via autocfg, no network
-fn main() {
-    // Only re-run when these specific files change
+// build.rs: deterministic output from an included package input.
+use std::{env, fs, path::PathBuf};
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("cargo::rerun-if-changed=build.rs");
-    println!("cargo::rerun-if-changed=src/generated.rs");
-    println!("cargo::rerun-if-env-changed=MY_BUILD_FLAG");
+    println!("cargo::rerun-if-changed=schema/version.txt");
 
-    // Probe actual compiler capability instead of parsing version strings
-    let ac = autocfg::new();
-    // Emit cfg if the compiler supports the feature we need
-    ac.emit_has_type("std::collections::BTreeMap");
-
-    // Conditional cfg from env var
-    if std::env::var("MY_BUILD_FLAG").is_ok() {
-        println!("cargo::rustc-cfg=my_feature");
-    }
+    let version = fs::read_to_string("schema/version.txt")?;
+    let output_dir = PathBuf::from(env::var_os("OUT_DIR").ok_or("missing cargo OUT_DIR")?);
+    fs::write(output_dir.join("version.txt"), version.trim())?;
+    Ok(())
 }
 ```
 
-```toml
-[build-dependencies]
-autocfg = "1"
-```
+The manifest must include `schema/version.txt` in the packaged crate. If this is
+simply static input, prefer `include_str!` or an ordinary constant and omit the
+build script altogether.
 
-## Guidelines
+## Rerun and Output Contracts
 
-- Always emit at least `println!("cargo::rerun-if-changed=build.rs")` so the script only re-runs when it or its tracked inputs change.
-- List every file the script reads: source files, schema files, code-gen templates. Missing a file means stale output; listing too many causes spurious rebuilds.
-- Never make network calls. Download assets in advance and check them into the repo or use a `vendored` feature that ships them.
-- Prefer `autocfg` or `rustversion` crates over parsing `rustc --version` for conditional compilation.
-- Keep build scripts short. If codegen is complex, extract it into a library crate used by `build.rs`, not into `build.rs` itself.
-- Avoid writing outside `OUT_DIR` (the directory Cargo provides for build output); writing elsewhere breaks sandboxed build environments.
+- Without explicit rerun directives, Cargo scans the package's files for changes;
+  it does **not** necessarily execute the script on every build.
+- Track every file, directory, and environment input actually read. Missing
+  inputs can leave stale output; broad inputs cause unnecessary rebuilds.
+- Emit `cargo::rerun-if-env-changed=NAME` for relevant environment configuration.
+  The `cargo::` spelling requires Rust/Cargo 1.77; use `cargo:` for an older MSRV.
+- Write generated output under `OUT_DIR`. Do not modify the source checkout or
+  depend on files omitted by `cargo package`.
+- Distinguish host tools from target artifacts when cross-compiling. Use Cargo's
+  target information rather than the build script's own host `cfg` values.
+- Use documented compiler capabilities or a focused probe when necessary,
+  rather than substring matching a compiler's version output.
+
+## Published and Native Dependencies
+
+Pregenerate bindings or protocol code during release preparation when practical,
+so downstream builds do not need the generator. Inspect packaged files and build
+the package in an environment that lacks the author's untracked files and tools.
+
+Native libraries may legitimately need a C toolchain, system library, or
+platform SDK. Document those prerequisites and supported targets, gate optional
+platform integrations, and prefer build paths that work with the intended
+toolchain. Do not promise every Tier 1 target for a deliberately platform-specific
+crate.
+
+Avoid build-time downloads in the default path. If an explicit integration
+requires them, pin and verify content, support a local source override for
+hermetic/offline builds, and report failures clearly. An HTTPS URL alone does not
+make downloaded build inputs reproducible.
+
+## Sources
+
+- [Microsoft: M-OOBE and M-SYS-CRATES](https://microsoft.github.io/rust-guidelines/guidelines/libs/building/index.html#M-OOBE)
+- [Cargo build scripts](https://doc.rust-lang.org/cargo/reference/build-scripts.html)
+- [Cargo package](https://doc.rust-lang.org/cargo/commands/cargo-package.html)
 
 ## See Also
 
-- [proj-feature-additive](proj-feature-additive.md) - design features to be strictly additive
-- [lint-cfg-check](lint-cfg-check.md) - catch cfg typos with unexpected_cfgs
+- [proj-feature-additive](proj-feature-additive.md) - keep optional integrations composable
+- [lint-cfg-check](lint-cfg-check.md) - declare custom configuration names
+- [proj-msrv-declare](proj-msrv-declare.md) - preserve the supported toolchain contract

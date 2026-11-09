@@ -16,12 +16,16 @@ semantic versioning for the rule set.
   atomic ordering and conditional performance guidance.
 
 ### Added
+- Eight focused Microsoft-inspired rules: lint expectations, public dependencies,
+  checked range APIs, FFI boundaries, panic safety, cooperative CPU work, future
+  size and idiomatic ports; documented conditional policies and source revision.
 - Six reviewed Rust 1.95–1.97 rules from PR #5, with additional corrections.
 - Two portable Google-inspired rules: named fields and UTF-8 boundaries.
 - A source review mapping adopted guidance and excluded project-specific policies.
 
 ### Changed
-- 273 rules across 26 categories; metadata version 1.5.1+fork.1.
+- 281 rules across 26 categories; metadata version 1.5.1+fork.2.
+- README category counts are generated from rule files with the skill index.
 - Pin the compile harness to Rust 1.97.1, add async-trait, require complete
   Cargo diagnostics and exact suspect-baseline parity.
 

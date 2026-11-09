@@ -1,7 +1,7 @@
 ---
 name: rust-skills
 description: >
-  Comprehensive Rust coding guidelines with 273 rules across 26 categories.
+  Comprehensive Rust coding guidelines with 281 rules across 26 categories.
   Use when writing, reviewing, or refactoring Rust code. Covers ownership,
   error handling, async patterns, concurrency, unsafe code, API design, memory
   optimization, performance, numeric safety, conversions, serde, pattern
@@ -10,19 +10,20 @@ description: >
 license: MIT
 metadata:
   author: leonardomso
-  version: "1.5.1+fork.1"
+  version: "1.5.1+fork.2"
   sources:
     - Rust API Guidelines
     - Rust Performance Book
     - Rust 2024 Edition Guide
     - The Rustonomicon
     - Google Rust Style Guide and Comprehensive Rust
+    - Microsoft Pragmatic Rust Guidelines v2026.6
     - ripgrep, tokio, serde, polars, axum, cargo codebases
 ---
 
 # Rust Best Practices
 
-Comprehensive guide for writing high-quality, idiomatic, and highly optimized Rust code. Contains 273 rules across 26 categories, prioritized by impact to guide LLMs in code generation and refactoring. Examples checked with Rust 1.97.1 (2024 edition); respect each project's MSRV.
+Comprehensive guide for writing high-quality, idiomatic, and highly optimized Rust code. Contains 281 rules across 26 categories, prioritized by impact to guide LLMs in code generation and refactoring. Examples checked with Rust 1.97.1 (2024 edition); respect each project's MSRV.
 
 ## When to Apply
 
@@ -43,9 +44,9 @@ Reference these guidelines when:
 | 1 | Ownership & Borrowing | CRITICAL | `own-` | 12 |
 | 2 | Error Handling | CRITICAL | `err-` | 12 |
 | 3 | Memory Optimization | CRITICAL | `mem-` | 17 |
-| 4 | Unsafe Code | CRITICAL | `unsafe-` | 7 |
-| 5 | API Design | HIGH | `api-` | 17 |
-| 6 | Async/Await | HIGH | `async-` | 18 |
+| 4 | Unsafe Code | CRITICAL | `unsafe-` | 9 |
+| 5 | API Design | HIGH | `api-` | 19 |
+| 6 | Async/Await | HIGH | `async-` | 20 |
 | 7 | Concurrency | HIGH | `conc-` | 5 |
 | 8 | Compiler Optimization | HIGH | `opt-` | 12 |
 | 9 | Numeric & Arithmetic Safety | HIGH | `num-` | 6 |
@@ -64,8 +65,8 @@ Reference these guidelines when:
 | 22 | Observability | MEDIUM | `obs-` | 7 |
 | 23 | Performance Patterns | MEDIUM | `perf-` | 13 |
 | 24 | Project Structure | LOW | `proj-` | 15 |
-| 25 | Clippy & Linting | LOW | `lint-` | 14 |
-| 26 | Anti-patterns | REFERENCE | `anti-` | 15 |
+| 25 | Clippy & Linting | LOW | `lint-` | 15 |
+| 26 | Anti-patterns | REFERENCE | `anti-` | 16 |
 
 ---
 
@@ -89,7 +90,7 @@ Reference these guidelines when:
 ### 2. Error Handling (CRITICAL)
 
 - [`err-thiserror-lib`](rules/err-thiserror-lib.md) - Use `thiserror` for library error types
-- [`err-anyhow-app`](rules/err-anyhow-app.md) - Use `anyhow` for application error handling
+- [`err-anyhow-app`](rules/err-anyhow-app.md) - Consider anyhow at reporting boundaries; retain typed errors where callers need structured recovery
 - [`err-result-over-panic`](rules/err-result-over-panic.md) - Return `Result<T, E>` instead of panicking for recoverable errors
 - [`err-context-chain`](rules/err-context-chain.md) - Add context with `.context()` or `.with_context()`
 - [`err-no-unwrap-prod`](rules/err-no-unwrap-prod.md) - Avoid `unwrap()` in production code; use `?`, `expect()`, or handle errors
@@ -130,6 +131,8 @@ Reference these guidelines when:
 - [`unsafe-extern-block`](rules/unsafe-extern-block.md) - In Rust 2024, wrap `extern` blocks in `unsafe extern { }` and annotate each item as `safe` or `unsafe`.
 - [`unsafe-send-sync-manual`](rules/unsafe-send-sync-manual.md) - Document the invariants when manually implementing `Send` or `Sync`; prefer letting the compiler derive them automatically.
 - [`unsafe-no-mangle-unsafe`](rules/unsafe-no-mangle-unsafe.md) - In Rust 2024, write `#[unsafe(no_mangle)]`, `#[unsafe(export_name = "...")]`, and `#[unsafe(link_section = "...")]` — not the bare attribute forms.
+- [`unsafe-ffi-boundary`](rules/unsafe-ffi-boundary.md) - Keep foreign ABI, allocation ownership, and runtime state behind an explicit FFI boundary
+- [`unsafe-panic-safety`](rules/unsafe-panic-safety.md) - Preserve memory safety if user code panics during an unsafe state transition
 
 ### 5. API Design (HIGH)
 
@@ -146,10 +149,12 @@ Reference these guidelines when:
 - [`api-non-exhaustive`](rules/api-non-exhaustive.md) - Use `#[non_exhaustive]` on public enums and structs for forward compatibility
 - [`api-from-not-into`](rules/api-from-not-into.md) - Implement `From<T>`, not `Into<U>` - From gives you Into for free
 - [`api-default-impl`](rules/api-default-impl.md) - Implement `Default` for types with sensible default values
-- [`api-common-traits`](rules/api-common-traits.md) - Implement standard traits (Debug, Clone, PartialEq, etc.) for public types
+- [`api-common-traits`](rules/api-common-traits.md) - Implement standard traits when their semantics fit the public type
 - [`api-serde-optional`](rules/api-serde-optional.md) - Make serde a feature flag, not a hard dependency for library crates
 - [`api-impl-fromiterator`](rules/api-impl-fromiterator.md) - Implement `FromIterator` and `Extend` for collection types, and `IntoIterator` for all three reference forms
 - [`api-operator-overload`](rules/api-operator-overload.md) - Overload operators only when the semantics are natural and unsurprising
+- [`api-public-dependencies`](rules/api-public-dependencies.md) - Treat third-party types in public APIs as deliberate compatibility commitments
+- [`api-range-bounds`](rules/api-range-bounds.md) - Use standard range types for interval APIs and validate endpoint conversions
 
 ### 6. Async/Await (HIGH)
 
@@ -171,6 +176,8 @@ Reference these guidelines when:
 - [`async-fn-in-trait`](rules/async-fn-in-trait.md) - Prefer native async trait methods for static dispatch; use boxed futures when dynamic dispatch is needed
 - [`async-async-fn-bounds`](rules/async-async-fn-bounds.md) - Use `AsyncFn`/`AsyncFnMut`/`AsyncFnOnce` bounds instead of `F: Fn() -> Fut, Fut: Future`
 - [`async-cancel-safety`](rules/async-cancel-safety.md) - Preserve progress and deadlines when select branches are cancelled and restarted
+- [`async-future-size`](rules/async-future-size.md) - Measure hot future sizes and avoid capturing large setup state unnecessarily
+- [`async-yield-cpu`](rules/async-yield-cpu.md) - Bound uninterrupted CPU work on async workers and offload sustained computation
 
 ### 7. Concurrency (HIGH)
 
@@ -190,7 +197,7 @@ Reference these guidelines when:
 - [`opt-lto-release`](rules/opt-lto-release.md) - Enable LTO in release builds
 - [`opt-codegen-units`](rules/opt-codegen-units.md) - Set `codegen-units = 1` for maximum optimization in release builds
 - [`opt-pgo-profile`](rules/opt-pgo-profile.md) - Use Profile-Guided Optimization (PGO) for maximum performance
-- [`opt-target-cpu`](rules/opt-target-cpu.md) - Use `target-cpu=native` for maximum performance on known deployment targets
+- [`opt-target-cpu`](rules/opt-target-cpu.md) - Target only CPU features guaranteed by the deployment fleet; measure before raising the baseline
 - [`opt-bounds-check`](rules/opt-bounds-check.md) - Use iterators and patterns that eliminate bounds checks in hot paths
 - [`opt-simd-portable`](rules/opt-simd-portable.md) - Use portable SIMD for vectorized operations across architectures
 - [`opt-cache-friendly`](rules/opt-cache-friendly.md) - Organize data for cache-efficient access patterns
@@ -319,7 +326,7 @@ Reference these guidelines when:
 - [`test-arrange-act-assert`](rules/test-arrange-act-assert.md) - Structure tests with clear Arrange, Act, Assert sections
 - [`test-proptest-properties`](rules/test-proptest-properties.md) - Use proptest for property-based testing
 - [`test-mockall-mocking`](rules/test-mockall-mocking.md) - Use mockall for trait mocking
-- [`test-mock-traits`](rules/test-mock-traits.md) - Use traits for dependencies to enable mocking in tests
+- [`test-mock-traits`](rules/test-mock-traits.md) - Make external effects controllable with appropriate inputs, I/O traits, or narrow dependency interfaces
 - [`test-fixture-raii`](rules/test-fixture-raii.md) - Use RAII pattern (Drop trait) for automatic test cleanup
 - [`test-tokio-async`](rules/test-tokio-async.md) - Use `#[tokio::test]` for async tests
 - [`test-should-panic`](rules/test-should-panic.md) - Use `#[should_panic]` to test that code panics as expected
@@ -366,7 +373,7 @@ Reference these guidelines when:
 - [`perf-black-box-bench`](rules/perf-black-box-bench.md) - Use black_box in benchmarks
 - [`perf-release-profile`](rules/perf-release-profile.md) - Optimize release profile settings
 - [`perf-profile-first`](rules/perf-profile-first.md) - Profile before optimizing
-- [`perf-ahash`](rules/perf-ahash.md) - Use a faster hasher (`ahash` / `FxHashMap`) when DoS resistance is not needed
+- [`perf-ahash`](rules/perf-ahash.md) - Change hashers only after measuring the workload and evaluating attacker control of keys
 - [`perf-io-buffering`](rules/perf-io-buffering.md) - Wrap `Read`/`Write` in `BufReader`/`BufWriter` for many small operations
 
 ### 24. Project Structure (LOW)
@@ -377,14 +384,14 @@ Reference these guidelines when:
 - [`proj-mod-rs-dir`](rules/proj-mod-rs-dir.md) - Use mod.rs for multi-file modules
 - [`proj-pub-crate-internal`](rules/proj-pub-crate-internal.md) - Use pub(crate) for internal APIs
 - [`proj-pub-super-parent`](rules/proj-pub-super-parent.md) - Use pub(super) for parent-only visibility
-- [`proj-pub-use-reexport`](rules/proj-pub-use-reexport.md) - Use pub use for clean public API
-- [`proj-prelude-module`](rules/proj-prelude-module.md) - Create prelude module for common imports
+- [`proj-pub-use-reexport`](rules/proj-pub-use-reexport.md) - Choose deliberate public paths and explicit reexports without accidentally expanding the API
+- [`proj-prelude-module`](rules/proj-prelude-module.md) - Provide a prelude only when recurring imports justify the extra public surface
 - [`proj-bin-dir`](rules/proj-bin-dir.md) - Put multiple binaries in src/bin/
 - [`proj-workspace-large`](rules/proj-workspace-large.md) - Use workspaces for large projects
 - [`proj-workspace-deps`](rules/proj-workspace-deps.md) - Use workspace dependency inheritance for consistent versions across crates
-- [`proj-feature-additive`](rules/proj-feature-additive.md) - Design Cargo features to be strictly additive
+- [`proj-feature-additive`](rules/proj-feature-additive.md) - Make reusable library features composable and declare their required capabilities
 - [`proj-msrv-declare`](rules/proj-msrv-declare.md) - Declare `rust-version` (MSRV) in Cargo.toml and test it in CI
-- [`proj-build-rs-minimal`](rules/proj-build-rs-minimal.md) - Keep `build.rs` minimal, deterministic, and idempotent
+- [`proj-build-rs-minimal`](rules/proj-build-rs-minimal.md) - Keep build scripts deterministic, track their inputs, and make packaged prerequisites explicit
 - [`proj-cfg-select`](rules/proj-cfg-select.md) - Use `cfg_select!` for one-of-many conditional items or expressions
 
 ### 25. Clippy & Linting (LOW)
@@ -403,6 +410,7 @@ Reference these guidelines when:
 - [`lint-cfg-check`](rules/lint-cfg-check.md) - Enable `unexpected_cfgs` and declare known cfgs to catch feature-gate typos
 - [`lint-clippy-nursery-selected`](rules/lint-clippy-nursery-selected.md) - Enable high-value `clippy::nursery` lints selectively, not the whole group
 - [`lint-warnings-deny-config`](rules/lint-warnings-deny-config.md) - Use Cargo `build.warnings` for a warning-free CI policy without changing compiler flags
+- [`lint-expect-reason`](rules/lint-expect-reason.md) - Prefer a narrow `#[expect]` with a reason for intentional lint exceptions
 
 ### 26. Anti-patterns (REFERENCE)
 
@@ -421,6 +429,7 @@ Reference these guidelines when:
 - [`anti-format-hot-path`](rules/anti-format-hot-path.md) - Don't use format! in hot paths
 - [`anti-collect-intermediate`](rules/anti-collect-intermediate.md) - Don't collect intermediate iterators
 - [`anti-stringly-typed`](rules/anti-stringly-typed.md) - Don't use strings where enums or newtypes would provide type safety
+- [`anti-transliterated-port`](rules/anti-transliterated-port.md) - Preserve domain behavior when porting code; redesign language-specific mechanisms for Rust
 
 ---
 
@@ -445,7 +454,7 @@ strip = false
 
 This skill provides rule identifiers for quick reference. When generating or reviewing Rust code:
 
-1. **Check relevant category** based on task type
+1. **Read project conventions and MSRV**, then check the relevant category
 2. **Apply rules** with matching prefix
 3. **Prioritize** CRITICAL > HIGH > MEDIUM > LOW
 4. **Read rule files** in `rules/` for detailed examples
@@ -474,7 +483,7 @@ This skill provides rule identifiers for quick reference. When generating or rev
 
 ## Sources & Attribution
 
-This fork applies reviewed upstream fixes and selected portable Google guidance. Read [references/source-review.md](references/source-review.md) for source revisions, adopted rules, and excluded project-specific policies.
+This fork applies reviewed upstream fixes and selected portable Google and Microsoft guidance. Read [references/source-review.md](references/source-review.md) for source revisions and Google mappings, and [references/microsoft-guidelines.md](references/microsoft-guidelines.md) for Microsoft applicability and exceptions.
 
 This skill is an independent synthesis of official Rust guidance, well-known books, and patterns from widely-used crates. It is not affiliated with or endorsed by the Rust project or any crate author; the text and code examples are original.
 
@@ -487,6 +496,7 @@ This skill is an independent synthesis of official Rust guidance, well-known boo
 - [Standard library docs](https://doc.rust-lang.org/std/) and [release notes](https://doc.rust-lang.org/releases.html)
 
 **Books & guides**
+- [Microsoft Pragmatic Rust Guidelines](https://microsoft.github.io/rust-guidelines/guidelines/) — selected v2026.6 guidance, with context and tradeoffs recorded in the Microsoft mapping above
 - [Google Rust Style Guide](https://google.github.io/styleguide/rustguide.html) and [Comprehensive Rust](https://google.github.io/comprehensive-rust/) — selected portable guidance; see the source review above
 - [The Rust Performance Book](https://nnethercote.github.io/perf-book/) — Nicholas Nethercote
 - [Rust Design Patterns](https://rust-unofficial.github.io/patterns/) — rust-unofficial

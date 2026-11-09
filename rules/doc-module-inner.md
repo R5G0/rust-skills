@@ -103,6 +103,13 @@ pub mod prelude;
 
 ## Key Sections for Module Docs
 
+Document the current purpose, contracts, supported features and useful usage
+paths. Keep temporary design journals and agent self-reports in review records
+or dedicated design documents when they are needed; durable design rationale
+belongs in API docs when it helps users choose or use the API correctly.
+
+Sources: [Microsoft M-MODULE-DOCS](https://microsoft.github.io/rust-guidelines/guidelines/docs/index.html#M-MODULE-DOCS), [M-NO-META-DESIGN-DOCUMENTATION](https://microsoft.github.io/rust-guidelines/guidelines/ai/index.html#M-NO-META-DESIGN-DOCUMENTATION).
+
 1. **Brief description** - One-line summary
 2. **Overview** - What the module provides
 3. **Examples** - How to use it

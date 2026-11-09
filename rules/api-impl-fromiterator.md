@@ -109,10 +109,10 @@ fn main() {
 ## Notes
 
 - If your collection wraps an existing standard container, delegate `from_iter` and `extend` to the inner container's own implementations for maximum efficiency.
-- `FromIterator` + `Extend` enable `collect` to call `extend` on a pre-allocated collection when possible, avoiding extra allocations.
+- `FromIterator` enables collect and `Extend` enables incremental insertion. Their implementations choose how to reserve and grow; implementing both does not by itself guarantee preallocation or allocation reuse.
 
 ## See Also
 
 - [name-iter-convention](name-iter-convention.md) - `iter`/`iter_mut`/`into_iter` method naming
 - [perf-collect-once](perf-collect-once.md) - avoid collecting intermediate iterators
-- [api-common-traits](api-common-traits.md) - implement `Debug`, `Clone`, `PartialEq` eagerly
+- [api-common-traits](api-common-traits.md) - implement traits that match actual semantics and caller needs

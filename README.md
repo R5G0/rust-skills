@@ -1,15 +1,15 @@
 # Rust Skills
 
-![rules](https://img.shields.io/badge/rules-273-blue)
+![rules](https://img.shields.io/badge/rules-281-blue)
 ![categories](https://img.shields.io/badge/categories-26-blue)
 ![Rust](https://img.shields.io/badge/Rust-1.97.1%20%2F%202024%20edition-orange)
 ![license](https://img.shields.io/badge/license-MIT-green)
 
-273 Rust rules your AI coding agent can use to write better code. Current for Rust 1.97.1 (2024 edition).
+281 Rust rules your AI coding agent can use to write better code. Current for Rust 1.97.1 (2024 edition).
 
 Works with Claude Code, Cursor, Windsurf, Copilot, Codex, Aider, Zed, Amp, Cline, and pretty much any other agent that supports skills.
 
-This fork fixes reviewed upstream issues and adds selected portable Google guidance. See [the source review](references/source-review.md) for scope and applicability.
+This fork fixes reviewed upstream issues and adds selected portable Google and Microsoft guidance. See [the source review](references/source-review.md) and [Microsoft applicability mapping](references/microsoft-guidelines.md) for the adopted rules and their limits.
 
 ## Why
 
@@ -68,16 +68,16 @@ fn first_word(s: &str) -> Option<&str> {
 
 ## What's in here
 
-273 rules split into 26 categories:
+281 rules split into 26 categories:
 
 | Category | Rules | What it covers |
 |----------|-------|----------------|
 | **Ownership & Borrowing** | 12 | When to borrow vs clone, Arc/Rc, lifetimes |
 | **Error Handling** | 12 | thiserror for libs, anyhow for apps, the `?` operator |
 | **Memory** | 17 | SmallVec, arenas, avoiding allocations, `mem::take`, drop order |
-| **Unsafe Code** | 7 | `SAFETY:` comments, Miri, `MaybeUninit`, 2024-edition unsafe |
-| **API Design** | 17 | Builder pattern, newtypes, sealed traits, `FromIterator` |
-| **Async** | 18 | Tokio patterns, channels, async fn in traits, cancel safety |
+| **Unsafe Code** | 9 | `SAFETY:` comments, Miri, `MaybeUninit`, 2024-edition unsafe |
+| **API Design** | 19 | Builder pattern, newtypes, sealed traits, `FromIterator` |
+| **Async** | 20 | Tokio patterns, channels, async fn in traits, cancel safety |
 | **Concurrency** | 5 | rayon, scoped threads, atomic ordering, thread-locals |
 | **Optimization** | 12 | LTO, inlining, PGO, SIMD |
 | **Numeric & Arithmetic** | 6 | Overflow handling, `as` vs `TryFrom`, float compare, `NonZero` |
@@ -96,8 +96,8 @@ fn first_word(s: &str) -> Option<&str> {
 | **Observability** | 7 | tracing over log, spans, structured fields, redacting secrets |
 | **Performance** | 13 | Iterators, entry API, faster hashers, I/O buffering |
 | **Project Structure** | 15 | Workspaces, module layout, features, MSRV |
-| **Linting** | 14 | Clippy config, CI setup, `unexpected_cfgs` |
-| **Anti-patterns** | 15 | Common mistakes and how to fix them |
+| **Linting** | 15 | Clippy config, CI setup, `unexpected_cfgs` |
+| **Anti-patterns** | 16 | Common mistakes and how to fix them |
 
 Each rule has:
 - Why it matters
@@ -168,6 +168,7 @@ These rules are an independent synthesis of official Rust guidance, well-known b
 - [Standard library docs](https://doc.rust-lang.org/std/) and [release notes](https://doc.rust-lang.org/releases.html)
 
 **Books & guides**
+- [Microsoft Pragmatic Rust Guidelines v2026.6](https://microsoft.github.io/rust-guidelines/guidelines/) — adopted rules and conditional policies are listed in [the Microsoft mapping](references/microsoft-guidelines.md)
 - [Google Rust Style Guide](https://google.github.io/styleguide/rustguide.html) and [Comprehensive Rust](https://google.github.io/comprehensive-rust/) — selected portable guidance, mapped in [the source review](references/source-review.md)
 - [The Rust Performance Book](https://nnethercote.github.io/perf-book/) — Nicholas Nethercote
 - [Rust Design Patterns](https://rust-unofficial.github.io/patterns/) — rust-unofficial

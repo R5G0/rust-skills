@@ -106,6 +106,17 @@ Or in `Cargo.toml` for workspace-wide enforcement:
 missing_docs = "warn"
 ```
 
+## API Contract Sections
+
+Begin with a concise behavioral summary that reads well in rustdoc listings;
+an exact word count is not a correctness rule. Add examples and the applicable
+Errors, Panics, Safety, or Abort sections. A safe function must not transfer
+unchecked memory-safety obligations to callers through prose. Describe
+parameters in the operation's explanation rather than repeating a signature
+in an unhelpful parameter table.
+
+Source: [Microsoft documentation guidelines](https://microsoft.github.io/rust-guidelines/guidelines/docs/index.html).
+
 ## See Also
 
 - [doc-module-inner](./doc-module-inner.md) - Module-level documentation

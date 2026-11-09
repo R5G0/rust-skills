@@ -1,189 +1,95 @@
 # test-mock-traits
 
-> Use traits for dependencies to enable mocking in tests
+> Make external effects controllable with appropriate inputs, I/O traits, or narrow dependency interfaces
 
 ## Why It Matters
 
-Concrete dependencies make testing hard—you can't easily test error paths, timeouts, or edge cases without real external systems. Extracting dependencies behind traits lets you inject test doubles (mocks, fakes, stubs), enabling isolated unit tests that run fast and cover edge cases.
+Clocks, entropy, filesystem state, network behavior, and environment configuration can make failure cases difficult to reproduce. Put a controllable boundary around the effects that matter to the behavior under test. A supplied value, closure, standard I/O trait, concrete fake, or narrow custom trait can each provide that boundary without requiring every dependency to become generic.
 
 ## Bad
 
 ```rust
-struct UserService {
-    db: PostgresConnection,  // Concrete type - hard to test
-}
-
-impl UserService {
-    async fn get_user(&self, id: u64) -> Result<User, Error> {
-        // Directly calls Postgres - needs real database to test
-        self.db.query("SELECT * FROM users WHERE id = $1", &[&id]).await
-    }
-}
-
-// Test requires real Postgres instance
-#[tokio::test]
-async fn test_get_user() {
-    let db = PostgresConnection::connect("postgres://...").await?;
-    let service = UserService { db };
-    // Slow, flaky, can't test error paths
+// Configuration parsing cannot be exercised without manipulating process state.
+fn retry_limit() -> u32 {
+    std::env::var("RETRY_LIMIT").unwrap().parse().unwrap()
 }
 ```
 
 ## Good
 
 ```rust
-// Define trait for dependency
-#[async_trait]
-trait UserRepository: Send + Sync {
-    async fn find_by_id(&self, id: u64) -> Result<Option<User>, DbError>;
-    async fn save(&self, user: &User) -> Result<(), DbError>;
+// The application reads its environment once, then supplies the input.
+fn retry_limit(text: &str) -> Result<u32, std::num::ParseIntError> {
+    text.parse()
 }
 
-// Production implementation
-struct PostgresUserRepo {
-    pool: PgPool,
-}
-
-#[async_trait]
-impl UserRepository for PostgresUserRepo {
-    async fn find_by_id(&self, id: u64) -> Result<Option<User>, DbError> {
-        sqlx::query_as("SELECT * FROM users WHERE id = $1")
-            .bind(id)
-            .fetch_optional(&self.pool)
-            .await
-    }
-    // ...
-}
-
-// Service depends on trait, not concrete type
-struct UserService<R: UserRepository> {
-    repo: R,
-}
-
-impl<R: UserRepository> UserService<R> {
-    async fn get_user(&self, id: u64) -> Result<User, Error> {
-        self.repo.find_by_id(id).await?
-            .ok_or(Error::NotFound)
-    }
-}
-
-// Test with mock
-#[cfg(test)]
-mod tests {
-    struct MockUserRepo {
-        users: HashMap<u64, User>,
-    }
-    
-    #[async_trait]
-    impl UserRepository for MockUserRepo {
-        async fn find_by_id(&self, id: u64) -> Result<Option<User>, DbError> {
-            Ok(self.users.get(&id).cloned())
-        }
-        // ...
-    }
-    
-    #[tokio::test]
-    async fn test_get_user_found() {
-        let mut mock = MockUserRepo { users: HashMap::new() };
-        mock.users.insert(1, User { id: 1, name: "Alice".into() });
-        
-        let service = UserService { repo: mock };
-        let user = service.get_user(1).await.unwrap();
-        
-        assert_eq!(user.name, "Alice");
-    }
-    
-    #[tokio::test]
-    async fn test_get_user_not_found() {
-        let mock = MockUserRepo { users: HashMap::new() };
-        let service = UserService { repo: mock };
-        
-        let result = service.get_user(999).await;
-        assert!(matches!(result, Err(Error::NotFound)));
-    }
+fn main() {
+    assert_eq!(retry_limit("3"), Ok(3));
+    assert!(retry_limit("many").is_err());
 }
 ```
 
-## mockall Crate
+A reusable reader can accept the existing I/O trait instead of requiring a
+particular file or a new application-specific interface:
 
 ```rust
-use mockall::*;
-use mockall::predicate::*;
+use std::io::{self, Read};
 
-#[automock]
-#[async_trait]
-trait Database: Send + Sync {
-    async fn query(&self, sql: &str) -> Result<Vec<Row>, Error>;
+fn read_version(mut reader: impl Read) -> io::Result<u8> {
+    let mut byte = [0];
+    reader.read_exact(&mut byte)?;
+    Ok(byte[0])
 }
 
-#[tokio::test]
-async fn test_with_mockall() {
-    let mut mock = MockDatabase::new();
-    
-    mock.expect_query()
-        .with(eq("SELECT 1"))
-        .times(1)
-        .returning(|_| Ok(vec![Row::new()]));
-    
-    let result = mock.query("SELECT 1").await;
-    assert!(result.is_ok());
-}
-```
+struct Unavailable;
 
-## Testing Error Paths
-
-```rust
-#[async_trait]
-trait HttpClient: Send + Sync {
-    async fn get(&self, url: &str) -> Result<Response, HttpError>;
-}
-
-struct FailingClient;
-
-#[async_trait]
-impl HttpClient for FailingClient {
-    async fn get(&self, _url: &str) -> Result<Response, HttpError> {
-        Err(HttpError::Timeout)  // Always fails
+impl Read for Unavailable {
+    fn read(&mut self, _: &mut [u8]) -> io::Result<usize> {
+        Err(io::Error::new(io::ErrorKind::PermissionDenied, "access denied"))
     }
 }
 
-#[tokio::test]
-async fn test_handles_timeout() {
-    let client = FailingClient;
-    let service = ApiService { client };
-    
-    let result = service.fetch_data().await;
-    assert!(matches!(result, Err(Error::NetworkError(_))));
+fn main() -> io::Result<()> {
+    assert_eq!(read_version(&[7_u8][..])?, 7);
+    assert_eq!(
+        read_version(&[][..]).expect_err("missing header").kind(),
+        io::ErrorKind::UnexpectedEof
+    );
+    assert_eq!(
+        read_version(Unavailable).expect_err("unavailable reader").kind(),
+        io::ErrorKind::PermissionDenied
+    );
+    Ok(())
 }
 ```
 
-## Dynamic Dispatch Alternative
+## Select the Smallest Useful Boundary
 
-```rust
-// When you don't want generics everywhere
-struct UserService {
-    repo: Box<dyn UserRepository>,
-}
+- Pass sampled time, configuration, or seeds as values when the algorithm only
+  needs one observation. Use a closure or clock abstraction when repeated,
+  controllable observations are part of the behavior.
+- Use standard `Read`/`Write` traits for synchronous stream processing when
+  they express the required contract. Use runtime-specific I/O traits when the
+  library intentionally targets that runtime.
+- Introduce a custom trait when callers need substitution at a meaningful
+  boundary. A single implementation does not invalidate a genuine boundary,
+  and testability alone does not require a trait for every concrete type.
+- Keep fakes faithful to the observable contract: partial I/O, ordering, failure
+  modes, and concurrency may matter. Retain real integration checks for adapter
+  behavior that the fake cannot establish.
+- Keep diagnostic access and safety-check bypasses out of production APIs.
+  A clearly named optional testing feature can expose shared test utilities;
+  feature unification means it is not a security boundary by itself.
+- Avoid tests that require unsafe process-wide environment mutation. Supplying
+  parsed configuration usually makes those tests simpler and more isolated.
 
-impl UserService {
-    fn new(repo: impl UserRepository + 'static) -> Self {
-        Self { repo: Box::new(repo) }
-    }
-}
+## Sources
 
-// Slight runtime cost but cleaner API
-```
-
-## Cargo.toml
-
-```toml
-[dev-dependencies]
-mockall = "0.11"
-async-trait = "0.1"  # For async trait mocking
-```
+- [Microsoft: M-MOCKABLE-SYSCALLS and M-TEST-UTIL](https://microsoft.github.io/rust-guidelines/guidelines/libs/resilience/index.html#M-MOCKABLE-SYSCALLS)
+- [Microsoft: M-IMPL-IO](https://microsoft.github.io/rust-guidelines/guidelines/libs/interop/index.html#M-IMPL-IO)
 
 ## See Also
 
-- [api-sealed-trait](./api-sealed-trait.md) - Trait design
-- [test-proptest-properties](./test-proptest-properties.md) - Property-based testing
-- [proj-lib-main-split](./proj-lib-main-split.md) - Testable architecture
+- [anti-over-abstraction](anti-over-abstraction.md) - introduce a real boundary without generic scaffolding
+- [test-mockall-mocking](test-mockall-mocking.md) - generate mocks when a trait interface is appropriate
+- [test-fixture-raii](test-fixture-raii.md) - manage external resources when they are needed
