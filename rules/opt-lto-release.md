@@ -1,10 +1,10 @@
 # opt-lto-release
 
-> Enable LTO in release builds
+> Measure LTO in release builds before enabling it
 
 ## Why It Matters
 
-Link-Time Optimization (LTO) enables optimizations across crate boundaries that aren't possible during normal compilation. This includes cross-crate inlining, dead code elimination, and devirtualization. Typically provides 5-20% performance improvement.
+Link-Time Optimization (LTO) permits additional optimization across crate boundaries. Its effect on runtime, binary size, and build cost depends on the program and compiler; benchmark the candidate rather than assuming a percentage improvement.
 
 ## Bad
 
@@ -30,7 +30,7 @@ strip = true         # Remove symbols for smaller binary
 ## LTO Options Explained
 
 ```toml
-# No LTO (default)
+# Default: eligible builds can use thin local LTO within one crate.
 lto = false
 
 # Thin LTO - fast compilation, most benefits
@@ -41,7 +41,7 @@ lto = "fat"
 # Equivalent to:
 lto = true
 
-# Thin-local - LTO within each crate only
+# Disable LTO, including thin local LTO.
 lto = "off"
 ```
 
@@ -49,9 +49,9 @@ lto = "off"
 
 | Setting | Compile Time | Binary Size | Performance |
 |---------|--------------|-------------|-------------|
-| `lto = false` | Fast | Larger | Baseline |
-| `lto = "thin"` | Medium | Smaller | +5-15% |
-| `lto = "fat"` | Slow | Smallest | +10-20% |
+| `lto = false` | Baseline | Measure | Measure |
+| `lto = "thin"` | Can increase link work | Measure | Measure |
+| `lto = "fat"` | Can increase link work further | Measure | Measure; not necessarily fastest |
 
 ## Evidence from Production
 
@@ -127,6 +127,12 @@ hyperfine ./target/release/myapp
 # Compare binary sizes
 ls -la target/release/myapp
 ```
+
+## Verified Project
+
+<!-- verify: fixture=optimization -->
+
+The [optimization fixture](../checks/fixtures/optimization/Cargo.toml) defines a valid thin-LTO profile. The [performance project's profile matrix](../perf-validation/README.md) executes separately built LTO candidates and compares their outputs. Per-package profile overrides cannot set `lto`; see [Cargo's profile reference](https://doc.rust-lang.org/cargo/reference/profiles.html#lto).
 
 ## See Also
 

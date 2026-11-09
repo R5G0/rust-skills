@@ -98,11 +98,8 @@ large_enum_variant = "warn"  # Warns when variants differ significantly
 ## Recursive Types Require Boxing
 
 ```rust
-// Won't compile - infinite size
-enum List {
-    Cons(i32, List),
-    Nil,
-}
+// An unboxed `Cons(i32, List)` would have infinite size and fail to compile.
+// The compiling implementation below uses indirection.
 
 // Must box recursive variant
 enum List {

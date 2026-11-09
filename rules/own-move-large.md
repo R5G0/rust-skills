@@ -30,24 +30,28 @@ let state = process_state(state);  // Two large memcpys
 
 ## Good
 
+The `Box` handle has pointer size for a sized pointee. Moving it preserves the heap allocation; the compiler may also eliminate moves of unboxed values, so measure before adding indirection.
+
 ```rust
-// Box reduces move cost to 8 bytes
-struct GameState {
-    board: Box<[[Cell; 100]; 100]>,  // Pointer to heap
-    history: Vec<Move>,               // Already heap-allocated
-    players: [Player; 4],
+struct LargeState {
+    data: Box<[u8; 4096]>,
+    history: Vec<u8>,
 }
 
-fn process_state(mut state: GameState) -> GameState {
-    // Moving just pointers + small inline data
-    state.apply_rules();
-    state  // Cheap move
-}
-
-// Or use Box at call site for one-off cases
-fn process_large(state: Box<LargeStruct>) -> Box<LargeStruct> {
-    // 8-byte move regardless of LargeStruct size
+fn process_state(mut state: LargeState) -> LargeState {
+    state.data[0] = 42;
+    state.history.push(42);
     state
+}
+
+fn main() {
+    let state = LargeState { data: Box::new([0; 4096]), history: Vec::new() };
+    let address = state.data.as_ptr();
+    let state = process_state(state);
+    assert_eq!(state.data[0], 42);
+    assert_eq!(state.history, [42]);
+    assert_eq!(state.data.as_ptr(), address);
+    assert_eq!(std::mem::size_of::<Box<[u8; 4096]>>(), std::mem::size_of::<usize>());
 }
 ```
 

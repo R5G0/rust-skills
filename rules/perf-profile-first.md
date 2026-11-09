@@ -135,7 +135,7 @@ Flamegraph Reading:
 
 ```rust
 // Finding: HashMap operations are slow
-// Fix: Use FxHashMap or AHashMap for non-crypto hashing
+// Candidate: measure another hasher only after checking who controls the keys.
 
 // Finding: String allocation in hot loop
 // Fix: Pre-allocate with capacity, use &str
@@ -153,13 +153,13 @@ Flamegraph Reading:
 ## Optimization Workflow
 
 ```
-1. Write correct code first
+1. Define correct behavior and cover the changed path with regression tests
 2. Write benchmarks for hot paths
 3. Profile under realistic load
 4. Identify actual bottlenecks
-5. Optimize ONE thing
-6. Measure improvement
-7. Repeat if needed
+5. Save a baseline, then optimize ONE thing
+6. Rerun correctness tests and compare measurements and uncertainty
+7. Check the affected application workload; retain only justified changes
 ```
 
 ## Evidence: Rust Performance Book
@@ -168,7 +168,15 @@ Flamegraph Reading:
 
 > "It is worth understanding which Rust data structures and operations cause allocations, because avoiding them can greatly improve performance."
 
+## Verified Project
+
+<!-- verify: fixture=performance -->
+
+See the [executable implementations, regression tests, and benchmarks](../perf-validation/README.md) for this rule and its recorded measurement limits.
+
 ## See Also
+
+The [validation project](../perf-validation/README.md) demonstrates a prepared kernel and a whole pipeline with checked equal results. Their timing scopes differ: this illustrates where costs occur, not an A/B speedup or a substitute for sampling a real application's call stacks. Record the workload, CPU, toolchain, features, profile, and compiler flags with any performance claim.
 
 - [opt-lto-release](opt-lto-release.md) - Enable LTO for release builds
 - [test-criterion-bench](test-criterion-bench.md) - Use criterion for benchmarking

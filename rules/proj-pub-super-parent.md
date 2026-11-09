@@ -4,7 +4,7 @@
 
 ## Why It Matters
 
-`pub(super)` exposes items only to the immediate parent module. This is useful for helper functions and types that submodules share but shouldn't be visible to the rest of the crate.
+`pub(super)` exposes items within the immediate parent module and its descendants. This is useful for helper functions and types that submodules share but shouldn't be visible to the rest of the crate.
 
 ## Bad
 
@@ -25,34 +25,25 @@ pub(crate) struct Token {  // Visible to entire crate
 
 ## Good
 
+<!-- verify: compile -->
 ```rust
-// src/parser/mod.rs
-pub mod lexer;
-pub mod ast;
+mod parser {
+    pub fn word_count(input: &str) -> usize {
+        lexer::lex(input).len()
+    }
 
-// Shared types for parser submodules only
-pub(super) struct Token {
-    pub(super) kind: TokenKind,
-    pub(super) span: Span,
+    mod lexer {
+        // Both items are accessible to parser and its descendants, not crate root.
+        pub(super) struct Token;
+
+        pub(super) fn lex(input: &str) -> Vec<Token> {
+            input.split_whitespace().map(|_| Token).collect()
+        }
+    }
 }
 
-pub(super) fn shared_helper() -> Token {
-    // Only visible in parser/*
-}
-
-// src/parser/lexer.rs
-use super::{Token, shared_helper};
-
-pub fn lex(input: &str) -> Vec<Token> {
-    shared_helper();
-    // ...
-}
-
-// src/parser/ast.rs
-use super::Token;
-
-pub fn parse(tokens: Vec<Token>) -> Ast {
-    // ...
+fn main() {
+    assert_eq!(parser::word_count("one two"), 2);
 }
 ```
 
@@ -62,10 +53,10 @@ pub fn parse(tokens: Vec<Token>) -> Ast {
 src/
 ├── lib.rs           # crate root
 ├── parser/
-│   ├── mod.rs       # pub(super) items visible here
-│   ├── lexer.rs     # can use pub(super) from mod.rs
-│   └── ast.rs       # can use pub(super) from mod.rs
-└── codegen.rs       # CANNOT see pub(super) parser items
+│   ├── mod.rs       # parent of lexer; sees lexer pub(super) items
+│   ├── lexer.rs     # pub(super) items scoped to parser
+│   └── ast.rs       # pub(super) items scoped to parser
+└── codegen.rs       # cannot see lexer pub(super) items
 ```
 
 ## Pattern: Layered Visibility
@@ -76,7 +67,7 @@ mod connection;
 mod query;
 mod pool;
 
-// Only this module's children can see
+// Visible to database's parent and that parent's descendants
 pub(super) struct RawConnection { /* ... */ }
 
 // Entire crate can see
@@ -98,7 +89,7 @@ mod tests {
     use super::*;
     
     // Test helper visible only to parser module's tests
-    pub(super) fn make_test_token() -> Token {
+    pub(in crate::parser) fn make_test_token() -> Token {
         Token { kind: TokenKind::Test, span: Span::dummy() }
     }
 }

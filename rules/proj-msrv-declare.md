@@ -50,6 +50,14 @@ CI job pinning the MSRV toolchain (GitHub Actions example):
 - Announce MSRV changes and follow the library's published compatibility policy. Microsoft's guideline permits minor-version bumps; a stricter existing support contract takes precedence. Do not raise MSRV merely to use the newest syntax.
 - Run `cargo msrv` (the `cargo-msrv` tool) to find the actual floor automatically.
 
+## Verified Project
+
+<!-- verify: fixture=layouts -->
+
+See the real [validation fixture source](../checks/fixtures/layouts/Cargo.toml). workspace.package.rust-version is 1.97.1 and each package inherits it. The validation gate checks this fixture with exactly Rust 1.97.1; that proves this declared floor, not compatibility with the illustrative 1.85 example above.
+
+Run from `checks/fixtures/layouts` with Rust 1.97.1: `cargo test --workspace --all-targets`, `cargo test --workspace --doc`, `cargo doc --workspace --no-deps`, `cargo fmt --all --check`, and `cargo clippy --workspace --all-targets -- -D warnings`.
+
 ## See Also
 
 Sources: [Microsoft M-MSRV](https://microsoft.github.io/rust-guidelines/guidelines/project/index.html#M-MSRV), [Cargo Rust-version resolution](https://doc.rust-lang.org/cargo/reference/resolver.html#rust-version).

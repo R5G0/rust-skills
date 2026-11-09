@@ -68,7 +68,9 @@ fn must_get_config() -> Config {
 
 ## Standard Library Examples
 
-```rust
+Signature catalogue, not a set of function definitions; the stable return-type examples elsewhere in this rule compile normally.
+
+```text
 // std::process::exit
 pub fn exit(code: i32) -> !
 

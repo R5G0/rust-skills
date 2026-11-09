@@ -69,13 +69,32 @@ impl User {
 ```rust
 use serde::{Deserialize, Serialize};
 
-// 'de is the standard serde lifetime for borrowed data
+// Derive introduces 'de internally; use a different name for the type's borrow.
 #[derive(Deserialize)]
-struct Request<'de> {
+struct Request<'a> {
     #[serde(borrow)]
-    name: &'de str,
+    name: &'a str,
     #[serde(borrow)]
-    tags: Vec<&'de str>,
+    tags: Vec<&'a str>,
+}
+```
+
+## Verified Example
+
+<!-- verify: compile -->
+```rust
+use serde::Deserialize;
+
+// The type's borrowing lifetime is 'a; derive introduces its own 'de lifetime.
+#[derive(Debug, Deserialize)]
+struct Request<'a> { #[serde(borrow)] name: &'a str }
+fn choose<'a>(first: &'a str, second: &'a str) -> &'a str {
+    if first.len() >= second.len() { first } else { second }
+}
+fn main() {
+    let input = String::from(r#"{"name":"Ada"}"#);
+    let request: Request<'_> = serde_json::from_str(&input).unwrap();
+    assert_eq!(choose(request.name, "Al"), "Ada");
 }
 ```
 

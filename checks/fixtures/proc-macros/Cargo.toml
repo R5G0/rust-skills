@@ -1,0 +1,15 @@
+[workspace]
+members = ["derive", "facade", "consumer"]
+resolver = "3"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[workspace.dependencies]
+checked-macros-derive = { path = "derive", version = "=0.1.0" }
+checked-macros = { path = "facade", version = "=0.1.0" }
+syn = { version = "2", features = ["derive", "parsing", "printing"] }
+quote = "1"
+proc-macro2 = "1"

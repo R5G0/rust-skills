@@ -22,23 +22,21 @@ fn load_user(id: u64) -> Result<User, Error> {
 
 ## Good
 
+<!-- verify: compile -->
 ```rust
 use anyhow::{Context, Result};
 
-fn load_user(id: u64) -> Result<User> {
-    let path = format!("users/{}.json", id);
-    
-    let content = std::fs::read_to_string(&path)
-        .with_context(|| format!("failed to read user file: {}", path))?;
-    
-    let user: User = serde_json::from_str(&content)
-        .with_context(|| format!("failed to parse user {} JSON", id))?;
-    
-    Ok(user)
+fn parse_retry_count(input: &str) -> Result<u32> {
+    input.parse::<u32>().with_context(|| format!("invalid retry count {input:?}"))
 }
 
-// Error: "failed to parse user 42 JSON"
-// Caused by: "expected ':' at line 5 column 12"
+fn main() {
+    assert_eq!(parse_retry_count("3").expect("fixture is an integer"), 3);
+    let error = parse_retry_count("many").expect_err("fixture is not an integer");
+    assert_eq!(error.to_string(), "invalid retry count \"many\"");
+    assert_eq!(error.chain().count(), 2);
+    assert!(error.downcast_ref::<std::num::ParseIntError>().is_some());
+}
 ```
 
 ## context() vs with_context()
@@ -61,6 +59,8 @@ fs::read_to_string(path)
 ## Building Context Chains
 
 ```rust
+use anyhow::{Context, Result};
+
 fn process_order(order_id: u64) -> Result<()> {
     let order = fetch_order(order_id)
         .with_context(|| format!("failed to fetch order {}", order_id))?;

@@ -14,7 +14,7 @@ use std::io::{Read, Write};
 
 // Every read call goes to the OS — catastrophic for line-by-line processing
 fn count_lines_slow(path: &str) -> std::io::Result<usize> {
-    let file = File::open(path)?;
+    let mut file = File::open(path)?;
     let mut count = 0usize;
     let mut byte = [0u8; 1];
     loop {
@@ -48,14 +48,19 @@ fn write_records_slow(path: &str, records: &[String]) -> std::io::Result<()> {
 use std::fs::File;
 use std::io::{self, BufRead, BufReader, BufWriter, Write};
 
-// BufReader batches OS reads; lines() iterates safely without extra allocation per line
+// Preserve the slow version's contract: count newline bytes, including non-UTF-8 input.
 fn count_lines_fast(path: &str) -> io::Result<usize> {
     let file = File::open(path)?;
-    let reader = BufReader::new(file);
+    let mut reader = BufReader::new(file);
     let mut count = 0usize;
-    for line in reader.lines() {
-        line?; // propagate IO errors
-        count += 1;
+    loop {
+        let bytes = reader.fill_buf()?;
+        if bytes.is_empty() {
+            break;
+        }
+        count += bytes.iter().filter(|&&byte| byte == b'\n').count();
+        let consumed = bytes.len();
+        reader.consume(consumed);
     }
     Ok(count)
 }
@@ -87,12 +92,20 @@ fn process_large_file(path: &str) -> io::Result<()> {
 ## Key Points
 
 - `BufWriter::flush()?` must be called explicitly. When a `BufWriter` is dropped, it attempts to flush, but any resulting error is **silently discarded**. Always flush before the writer goes out of scope.
-- The default buffer size for both `BufReader` and `BufWriter` is 8 KiB. For sequential reads of large files, a larger buffer (32–512 KiB) can improve throughput by reducing the number of `read` syscalls further.
+- Current defaults use an 8 KiB buffer; that size is not a stable API guarantee. Measure alternative capacities for the actual file or stream.
 - `BufReader` implements `BufRead`, which provides `lines()`, `read_line()`, and `read_until()` — use these instead of reading bytes manually.
-- Network streams (`TcpStream`, etc.) benefit equally from buffering, since each `write` on an unbuffered stream may send a tiny TCP segment.
+- Network streams can benefit from batching small operations, but buffer boundaries, latency, and flushing behavior need workload-specific measurement; a write is not necessarily a TCP packet.
 - If you wrap a type that is already internally buffered (e.g., `tokio::io::BufWriter` in async code), adding another layer is redundant.
 
+## Verified Project
+
+<!-- verify: fixture=performance -->
+
+See the [executable implementations, regression tests, and benchmarks](../perf-validation/README.md) for this rule and its recorded measurement limits.
+
 ## See Also
+
+`lines()` returns owned UTF-8 strings and may allocate per line. It counts an unterminated final line and rejects invalid UTF-8, unlike counting newline bytes. Choose the input contract before comparing performance. The [executable I/O tests](../perf-validation/tests/buffered_io.rs) cover both counterexamples, short reads/writes, and flush failures; [file-backed benchmarks](../perf-validation/benches/cases/buffered_io.rs) compare equivalent byte-counting workloads.
 
 - [mem-with-capacity](mem-with-capacity.md) - pre-size buffers when the final size is known
 - [perf-profile-first](perf-profile-first.md) - confirm IO is the bottleneck before tuning

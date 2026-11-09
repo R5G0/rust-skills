@@ -81,7 +81,10 @@ assert_eq!(*rx.borrow(), "v3");  // Skipped v1, v2
 ```rust
 use tokio::sync::watch;
 use std::sync::Arc;
+use std::time::Duration;
+use tracing::Level;
 
+#[derive(PartialEq, Eq)]
 struct AppConfig {
     log_level: Level,
     max_connections: usize,
@@ -94,7 +97,7 @@ async fn config_watcher(tx: watch::Sender<Arc<AppConfig>>) {
         if let Ok(new_config) = reload_config_from_disk() {
             // Only notifies if value actually changed
             tx.send_if_modified(|current| {
-                if *current != new_config {
+                if current.as_ref() != &new_config {
                     *current = Arc::new(new_config);
                     true
                 } else {
@@ -108,8 +111,9 @@ async fn config_watcher(tx: watch::Sender<Arc<AppConfig>>) {
 async fn worker(mut config_rx: watch::Receiver<Arc<AppConfig>>) {
     loop {
         tokio::select! {
-            _ = config_rx.changed() => {
-                let config = config_rx.borrow().clone();
+            changed = config_rx.changed() => {
+                if changed.is_err() { break; }
+                let config = config_rx.borrow_and_update().clone();
                 reconfigure(&config);
             }
             _ = do_work() => {}

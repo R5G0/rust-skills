@@ -50,19 +50,17 @@ enum ConfigError {
 
 ## Rust Standard Library Convention
 
-The standard library follows this convention:
+Standard library error messages normally start lowercase. The exact wording can depend on the platform; these strings illustrate the style rather than a stable message contract.
 
 ```rust
-// std::io::Error messages
-"entity not found"
-"permission denied"
-"connection refused"
-
-// std::num::ParseIntError
-"invalid digit found in string"
-
-// std::str::Utf8Error  
-"invalid utf-8 sequence"
+let examples = [
+    "entity not found",
+    "permission denied",
+    "connection refused",
+    "invalid digit found in string",
+    "invalid utf-8 sequence",
+];
+assert!(examples.iter().all(|message| message.starts_with(char::is_lowercase)));
 ```
 
 ## Formatting Guidelines
@@ -107,14 +105,20 @@ pub struct ConfigError {
 
 ## When to Use Capitals
 
-```rust
-// Proper nouns / acronyms keep their case
-#[error("invalid JSON syntax")]     // JSON is an acronym
-#[error("OAuth token expired")]     // OAuth is a proper noun
-#[error("HTTP request failed")]     // HTTP is an acronym
+Proper nouns and acronyms retain their spelling, even at the start of a message:
 
-// Error codes can be uppercase
-#[error("error code E0001: invalid input")]
+```rust
+#[derive(Debug, thiserror::Error)]
+enum RequestError {
+    #[error("invalid JSON syntax")]
+    InvalidJson,
+    #[error("OAuth token expired")]
+    ExpiredToken,
+    #[error("HTTP request failed")]
+    Http,
+    #[error("error code E0001: invalid input")]
+    InvalidInput,
+}
 ```
 
 ## See Also

@@ -71,9 +71,9 @@ fn reuse_buffer() {
 ## Pattern: Batch Processing
 
 ```rust
-fn process_in_chunks(mut items: Vec<Item>, chunk_size: usize) {
+fn process_in_chunks(mut items: Vec<Item>, chunk_size: std::num::NonZeroUsize) {
     while !items.is_empty() {
-        let chunk: Vec<_> = items.drain(..chunk_size.min(items.len())).collect();
+        let chunk: Vec<_> = items.drain(..chunk_size.get().min(items.len())).collect();
         process_chunk(chunk);
     }
 }
@@ -82,7 +82,7 @@ fn process_in_chunks(mut items: Vec<Item>, chunk_size: usize) {
 ## Pattern: Transfer Between Collections
 
 ```rust
-// Move all elements without reallocation
+// Retain source capacity; destination can grow if spare capacity is insufficient.
 fn transfer_all(src: &mut Vec<Item>, dst: &mut Vec<Item>) {
     dst.extend(src.drain(..));
     // src is now empty but keeps capacity
@@ -90,8 +90,7 @@ fn transfer_all(src: &mut Vec<Item>, dst: &mut Vec<Item>) {
 
 // Move matching elements
 fn transfer_matching(src: &mut Vec<Item>, dst: &mut Vec<Item>, predicate: impl Fn(&Item) -> bool) {
-    let matching: Vec<_> = src.drain(..).filter(predicate).collect();
-    dst.extend(matching);
+    dst.extend(src.extract_if(.., |item| predicate(item)));
 }
 ```
 
@@ -130,7 +129,15 @@ for item in vec.drain(..) {
 let old_vec = std::mem::take(&mut vec);
 ```
 
+## Verified Project
+
+<!-- verify: fixture=performance -->
+
+See the [executable implementations, regression tests, and benchmarks](../perf-validation/README.md) for this rule and its recorded measurement limits.
+
 ## See Also
+
+Draining a prefix of a `Vec` moves the remaining elements. Repeating small prefix drains can be quadratic even when the destination allocation is reused; consider slice chunks or a queue when the ownership contract allows them. The [formal tests and benchmarks](../perf-validation/README.md) include source compaction, final partial batches, and capacity retention. A nonzero batch size prevents a non-progressing loop. `extract_if` above retains nonmatching elements in the source; `drain(..).filter(...)` would remove every source element and drop the nonmatches.
 
 - [mem-reuse-collections](./mem-reuse-collections.md) - Reusing collections
 - [perf-extend-batch](./perf-extend-batch.md) - Batch insertions

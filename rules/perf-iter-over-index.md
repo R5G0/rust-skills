@@ -4,7 +4,7 @@
 
 ## Why It Matters
 
-Iterators are the idiomatic way to traverse collections in Rust. They enable bounds check elimination, SIMD auto-vectorization, and cleaner code. Manual indexing (`for i in 0..len`) often prevents these optimizations and introduces off-by-one error risks.
+Iterators express traversal without manual index bookkeeping and can help the optimizer remove bounds checks or vectorize loops. Indexed loops can also be optimized well. Neither loop syntax guarantees a particular number of checks, vector instructions, or a speedup; compare optimized builds on the actual workload.
 
 ## Bad
 
@@ -84,9 +84,9 @@ fn interleave(data: &mut [i32]) {
 
 | Pattern | Bounds Checks | SIMD Potential | Clarity |
 |---------|---------------|----------------|---------|
-| `for i in 0..len` | Every access | Limited | Medium |
-| `for &x in slice` | None | High | High |
-| `.iter().enumerate()` | None | Medium | High |
+| `for i in 0..len` | Can be eliminated when proven in range | Compiler/workload dependent | Medium |
+| `for &x in slice` | No explicit indexing | Compiler/workload dependent | High |
+| `.iter().enumerate()` | No explicit indexing | Compiler/workload dependent | High |
 | `get_unchecked` | None (unsafe) | High | Low |
 
 ## Iterator Advantages
@@ -106,7 +106,15 @@ use rayon::prelude::*;
 let sum: i64 = data.par_iter().map(|&x| x as i64).sum();
 ```
 
+## Verified Project
+
+<!-- verify: fixture=performance -->
+
+See the [executable implementations, regression tests, and benchmarks](../perf-validation/README.md) for this rule and its recorded measurement limits.
+
 ## See Also
+
+The [formal experiment](../perf-validation/README.md) checks empty inputs, unequal-length zips, mutation results, and bounded arithmetic; its indexed/iterator benchmarks make no expected-winner assertion. The sums shown here require the result to fit in `i64`, and doubling requires each result to fit in `i32`.
 
 - [perf-iter-lazy](./perf-iter-lazy.md) - Keep iterators lazy
 - [opt-bounds-check](./opt-bounds-check.md) - Bounds check elimination

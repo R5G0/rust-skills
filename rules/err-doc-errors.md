@@ -25,40 +25,43 @@ pub fn parse_input(input: &str) -> Result<Value, ParseError> {
 
 ## Good
 
+<!-- verify: compile -->
 ```rust
-/// Loads a configuration from the specified path.
-///
-/// # Errors
-///
-/// Returns an error if:
-/// - The file at `path` does not exist or cannot be read
-/// - The file contents are not valid TOML
-/// - Required configuration keys are missing
-/// - Configuration values are out of valid ranges
-///
-/// # Examples
-///
-/// ```
-/// # use mylib::{load_config, ConfigError};
-/// # fn main() -> Result<(), ConfigError> {
-/// let config = load_config("app.toml")?;
-/// # Ok(())
-/// # }
-/// ```
-pub fn load_config(path: &Path) -> Result<Config, ConfigError> {
-    // ...
+#[derive(Debug, PartialEq, Eq)]
+pub enum ParseError {
+    Empty,
+    InvalidFormat,
+    Overflow,
+    NotPositive,
 }
 
-/// Parses and validates the input string as a positive integer.
+/// Parses an integer strictly greater than zero.
 ///
 /// # Errors
 ///
-/// Returns [`ParseError::Empty`] if the input is empty.
-/// Returns [`ParseError::InvalidFormat`] if the input contains non-digit characters.
-/// Returns [`ParseError::Overflow`] if the value exceeds `i64::MAX`.
-/// Returns [`ParseError::NotPositive`] if the value is zero or negative.
+/// Returns [`ParseError::Empty`] for empty input, [`ParseError::InvalidFormat`]
+/// for invalid integer syntax, [`ParseError::Overflow`] for an integer outside
+/// the `i64` range, and [`ParseError::NotPositive`] for zero or negative values.
 pub fn parse_positive_int(input: &str) -> Result<i64, ParseError> {
-    // ...
+    if input.is_empty() {
+        return Err(ParseError::Empty);
+    }
+    let value = input.parse::<i64>().map_err(|error| match error.kind() {
+        std::num::IntErrorKind::PosOverflow | std::num::IntErrorKind::NegOverflow => ParseError::Overflow,
+        _ => ParseError::InvalidFormat,
+    })?;
+    if value <= 0 {
+        return Err(ParseError::NotPositive);
+    }
+    Ok(value)
+}
+
+fn main() {
+    assert_eq!(parse_positive_int("42"), Ok(42));
+    assert_eq!(parse_positive_int(""), Err(ParseError::Empty));
+    assert_eq!(parse_positive_int("bad"), Err(ParseError::InvalidFormat));
+    assert_eq!(parse_positive_int("0"), Err(ParseError::NotPositive));
+    assert_eq!(parse_positive_int("9223372036854775808"), Err(ParseError::Overflow));
 }
 ```
 

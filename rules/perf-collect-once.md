@@ -4,12 +4,12 @@
 
 ## Why It Matters
 
-Each `.collect()` allocates a new collection. Chaining multiple operations with intermediate collections wastes memory and CPU cycles. Keep iterator chains lazy and collect only once at the end.
+Intermediate collections can add allocation, traversal, and peak-memory costs. Keep transformations lazy when callers need only the final result, while preserving observable effects and errors. Allocation counts depend on the collection, iterator specialization, and existing storage; not every `collect` performs a fresh heap allocation.
 
 ## Bad
 
 ```rust
-// Three allocations, three passes
+// Multiple collection stages and traversals; actual allocations depend on specialization
 fn process_users(users: Vec<User>) -> Vec<String> {
     let active: Vec<_> = users.into_iter()
         .filter(|u| u.is_active)
@@ -36,7 +36,7 @@ fn count_valid(items: &[Item]) -> usize {
 ## Good
 
 ```rust
-// One allocation, one pass
+// One final collection stage
 fn process_users(users: Vec<User>) -> Vec<String> {
     users.into_iter()
         .filter(|u| u.is_active)
@@ -95,9 +95,9 @@ sorted.sort_by_key(|x| x.priority);
 
 | Approach | Allocations | Passes | Memory |
 |----------|-------------|--------|--------|
-| Multiple `.collect()` | N | N | O(N × data) |
-| Single chain + `.collect()` | 1 | 1 | O(data) |
-| No `.collect()` (streaming) | 0 | 1 | O(1) |
+| Multiple `.collect()` | Implementation dependent | Multiple stages | Intermediate storage can increase the peak |
+| Single chain + `.collect()` | Implementation dependent | One traversal pipeline | Final output storage |
+| No `.collect()` (streaming) | No intermediate collection required | One traversal pipeline | Depends on operation state |
 
 ## Pattern: Collect with Capacity
 
@@ -112,6 +112,14 @@ result.extend(
         .map(|x| x.clone())
 );
 ```
+
+## Verified Project
+
+<!-- verify: fixture=performance -->
+
+See the [executable implementations, regression tests, and benchmarks](../perf-validation/README.md) for this rule and its recorded measurement limits.
+
+Combining stages can change the order of predicate calls, errors, and side effects. Check their contract as well as returned values; [regression tests](../perf-validation/tests/iterators.rs) demonstrate why lazy and eager effects can differ.
 
 ## See Also
 

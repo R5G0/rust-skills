@@ -42,13 +42,15 @@ struct Api { ... }             // Not API
 
 ## Standard Library Examples
 
-```rust
+Catalogue of standard-library type names; these are paths, not expressions to execute.
+
+```text
 // std uses acronyms as words
 std::net::TcpStream            // Not TCPStream
 std::net::TcpListener          // Not TCPListener
 std::net::UdpSocket            // Not UDPSocket
 std::net::IpAddr               // Not IPAddr
-std::io::IoError               // Not IOError (though Io is acceptable too)
+std::io::Error                 // Referred to as io::Error; there is no std::io::IoError
 ```
 
 ## Two-Letter Acronyms
@@ -90,6 +92,22 @@ struct Base64Encoder { ... }     // Base64 as word
 // Multiple acronyms
 struct JsonApiClient { ... }     // Json + Api + Client
 struct RestApiHandler { ... }    // Rest + Api + Handler
+```
+
+## Verified Example
+
+<!-- verify: compile -->
+```rust
+struct HttpServer { address: std::net::IpAddr }
+struct JsonParser;
+impl JsonParser {
+    fn parse_json(input: &str) -> serde_json::Result<serde_json::Value> { serde_json::from_str(input) }
+}
+fn main() {
+    let server = HttpServer { address: "127.0.0.1".parse().unwrap() };
+    assert!(server.address.is_loopback());
+    assert_eq!(JsonParser::parse_json("42").unwrap(), serde_json::json!(42));
+}
 ```
 
 ## See Also

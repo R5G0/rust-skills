@@ -92,8 +92,8 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-// Or with custom exit handling
-fn main() {
+// Or use this body as main for custom exit handling.
+fn main_with_custom_exit() {
     if let Err(e) = run() {
         eprintln!("Error: {:#}", e);  // Pretty-print with causes
         std::process::exit(1);

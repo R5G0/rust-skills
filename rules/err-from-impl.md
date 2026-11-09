@@ -32,38 +32,37 @@ fn load_config(path: &str) -> Result<Config, AppError> {
 
 ## Good
 
+<!-- verify: compile -->
 ```rust
-#[derive(Debug)]
+use std::io::Read;
+use thiserror::Error;
+
+#[derive(Debug, Error)]
 enum AppError {
+    #[error("failed to read configuration: {0}")]
     Io(std::io::Error),
+    #[error("invalid JSON configuration: {0}")]
     Parse(serde_json::Error),
-    Database(diesel::result::Error),
 }
 
-// Implement From for each source error type
 impl From<std::io::Error> for AppError {
-    fn from(err: std::io::Error) -> Self {
-        AppError::Io(err)
-    }
+    fn from(error: std::io::Error) -> Self { Self::Io(error) }
 }
 
 impl From<serde_json::Error> for AppError {
-    fn from(err: serde_json::Error) -> Self {
-        AppError::Parse(err)
-    }
+    fn from(error: serde_json::Error) -> Self { Self::Parse(error) }
 }
 
-impl From<diesel::result::Error> for AppError {
-    fn from(err: diesel::result::Error) -> Self {
-        AppError::Database(err)
-    }
+fn read_config(mut reader: impl Read) -> Result<serde_json::Value, AppError> {
+    let mut content = String::new();
+    reader.read_to_string(&mut content)?;
+    Ok(serde_json::from_str(&content)?)
 }
 
-fn load_config(path: &str) -> Result<Config, AppError> {
-    let content = std::fs::read_to_string(path)?;  // Auto-converts
-    let config: Config = serde_json::from_str(&content)?;  // Clean!
-    save_to_db(&config)?;
-    Ok(config)
+fn main() {
+    let config = read_config(&b"{\"retries\":3}"[..]).expect("fixture is JSON");
+    assert_eq!(config["retries"], 3);
+    assert!(matches!(read_config(&b"invalid"[..]), Err(AppError::Parse(_))));
 }
 ```
 
@@ -95,54 +94,56 @@ fn load_config(path: &str) -> Result<Config, AppError> {
 
 ## From with Context
 
-Sometimes you need to add context during conversion:
+Use an explicit conversion when the destination error also needs operation-specific fields:
 
 ```rust
-#[derive(Error, Debug)]
+use anyhow::Context;
+use thiserror::Error;
+
+#[derive(Debug, Error)]
 enum ConfigError {
-    #[error("Failed to read config from '{path}': {source}")]
-    ReadFailed {
-        path: String,
-        #[source]
-        source: std::io::Error,
-    },
+    #[error("failed to read config from {path}: {source}")]
+    ReadFailed { path: String, #[source] source: std::io::Error },
 }
 
-// Can't use #[from] when you need extra context
-fn load_config(path: &str) -> Result<Config, ConfigError> {
-    let content = std::fs::read_to_string(path)
-        .map_err(|source| ConfigError::ReadFailed {
-            path: path.to_string(),
-            source,
-        })?;
-    // ...
+fn read_with_typed_context(path: &str) -> Result<String, ConfigError> {
+    std::fs::read_to_string(path).map_err(|source| ConfigError::ReadFailed {
+        path: path.to_owned(), source,
+    })
 }
 
-// Or use anyhow for ad-hoc context
-use anyhow::{Context, Result};
-
-fn load_config(path: &str) -> Result<Config> {
-    let content = std::fs::read_to_string(path)
-        .with_context(|| format!("Failed to read config from '{}'", path))?;
-    // ...
+fn read_with_anyhow_context(path: &str) -> anyhow::Result<String> {
+    std::fs::read_to_string(path).with_context(|| format!("failed to read config from {path}"))
 }
 ```
 
 ## Blanket From Implementations
 
-Be careful with blanket implementations:
+A blanket conversion can overlap with `From<T> for T` when the destination itself implements `Error`:
+
+```rust,compile_fail
+#[derive(Debug, thiserror::Error)]
+#[error("application error: {0}")]
+struct AppError(String);
+
+impl<E: std::error::Error> From<E> for AppError {
+    fn from(error: E) -> Self { Self(error.to_string()) }
+}
+```
+
+Prefer concrete source types:
 
 ```rust
-// ❌ Too broad - conflicts with other From impls
-impl<E: std::error::Error> From<E> for AppError {
-    fn from(err: E) -> Self {
-        AppError::Other(err.to_string())
-    }
+#[derive(Debug)]
+enum AppError { Io(std::io::Error), Parse(std::num::ParseIntError) }
+
+impl From<std::io::Error> for AppError {
+    fn from(error: std::io::Error) -> Self { Self::Io(error) }
 }
 
-// ✅ Specific implementations
-impl From<std::io::Error> for AppError { ... }
-impl From<ParseIntError> for AppError { ... }
+impl From<std::num::ParseIntError> for AppError {
+    fn from(error: std::num::ParseIntError) -> Self { Self::Parse(error) }
+}
 ```
 
 ## See Also

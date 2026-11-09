@@ -127,7 +127,7 @@ fn parse_config(s: &str) -> Result<Config, ParseError> { ... }
 
 ```rust
 // Bad: boolean flags
-struct Task {
+struct TaskWithFlags {
     is_running: bool,
     is_completed: bool,
     is_failed: bool,
@@ -144,6 +144,23 @@ enum TaskState {
 
 struct Task {
     state: TaskState,
+}
+```
+
+## Verified Example
+
+<!-- verify: compile -->
+```rust
+#[derive(Debug, PartialEq)]
+enum TaskState { Pending, Running { started_at: u64 }, Completed { output: String }, Failed { error: String } }
+fn describe(state: &TaskState) -> &str {
+    match state { TaskState::Pending => "pending", TaskState::Running { .. } => "running", TaskState::Completed { output } => output, TaskState::Failed { error } => error }
+}
+fn main() {
+    assert_eq!(describe(&TaskState::Pending), "pending");
+    assert_eq!(describe(&TaskState::Running { started_at: 1 }), "running");
+    assert_eq!(describe(&TaskState::Completed { output: String::from("done") }), "done");
+    assert_eq!(describe(&TaskState::Failed { error: String::from("cancelled") }), "cancelled");
 }
 ```
 

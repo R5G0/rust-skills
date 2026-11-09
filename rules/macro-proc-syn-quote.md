@@ -47,6 +47,10 @@ use syn::{parse_macro_input, spanned::Spanned, DeriveInput};
 pub fn derive_hello(input: TokenStream) -> TokenStream {
     // parse_macro_input! gives a typed DeriveInput or emits a compile error.
     let input = parse_macro_input!(input as DeriveInput);
+    generate_hello_impl(&input).into()
+}
+
+fn generate_hello_impl(input: &DeriveInput) -> proc_macro2::TokenStream {
     let name = &input.ident;
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
@@ -59,7 +63,7 @@ pub fn derive_hello(input: TokenStream) -> TokenStream {
         }
     };
 
-    expanded.into()
+    expanded
 }
 ```
 
@@ -103,6 +107,11 @@ mod tests {
     }
 }
 ```
+
+## Verified Project
+
+<!-- verify: fixture=proc-macros -->
+The [proc-macro fixture workspace](../checks/fixtures/proc-macros/Cargo.toml) compiles a real derive crate, facade, and separate consumer. Run `cargo test --manifest-path checks/fixtures/proc-macros/Cargo.toml --workspace --locked` to verify their crate boundaries and generated implementations.
 
 ## See Also
 

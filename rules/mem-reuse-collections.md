@@ -9,7 +9,7 @@ Creating new `Vec`, `String`, or `HashMap` instances in hot loops generates sign
 ## Bad
 
 ```rust
-fn process_batches(batches: &[Batch]) -> Vec<Result> {
+fn process_batches(batches: &[Batch]) -> Vec<BatchResult> {
     let mut results = Vec::new();
     
     for batch in batches {
@@ -42,7 +42,7 @@ fn format_lines(items: &[Item]) -> String {
 ## Good
 
 ```rust
-fn process_batches(batches: &[Batch]) -> Vec<Result> {
+fn process_batches(batches: &[Batch]) -> Vec<BatchResult> {
     let mut results = Vec::with_capacity(batches.len());
     let mut temp = Vec::new();  // Allocate once outside loop
     

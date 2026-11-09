@@ -49,6 +49,10 @@ read_file(OsStr::new("/path")); // &OsStr
 ## AsRef vs Into vs Borrow
 
 ```rust
+use std::collections::HashMap;
+use std::hash::Hash;
+use std::path::{Path, PathBuf};
+
 // AsRef<T>: cheap borrow, no ownership transfer
 fn read(p: impl AsRef<Path>) {
     let path: &Path = p.as_ref();
@@ -61,7 +65,7 @@ fn store(p: impl Into<PathBuf>) {
 
 // Borrow<T>: like AsRef but with Eq/Hash consistency guarantee
 use std::borrow::Borrow;
-fn lookup<Q: ?Sized>(map: &HashMap<String, V>, key: &Q) -> Option<&V>
+fn lookup<'a, Q: ?Sized, V>(map: &'a HashMap<String, V>, key: &Q) -> Option<&'a V>
 where
     String: Borrow<Q>,
     Q: Hash + Eq,
@@ -98,17 +102,16 @@ greet(Name("Alice".into()));
 ## Common AsRef Implementations
 
 ```rust
-// Standard library provides many
-impl AsRef<str> for String { ... }
-impl AsRef<str> for str { ... }
-impl AsRef<[u8]> for str { ... }
-impl AsRef<[u8]> for String { ... }
-impl AsRef<[u8]> for Vec<u8> { ... }
-impl AsRef<Path> for str { ... }
-impl AsRef<Path> for String { ... }
-impl AsRef<Path> for PathBuf { ... }
-impl AsRef<Path> for OsStr { ... }
-impl AsRef<OsStr> for str { ... }
+use std::path::{Path, PathBuf};
+
+let owned = String::from("hello");
+let text: &str = owned.as_ref();
+let bytes: &[u8] = owned.as_ref();
+assert_eq!(text, "hello");
+assert_eq!(bytes, b"hello");
+let path_buf = PathBuf::from("config.json");
+let path: &Path = path_buf.as_ref();
+assert_eq!(path, Path::new("config.json"));
 ```
 
 ## When to Use Which
@@ -130,7 +133,7 @@ fn process<T: AsRef<U>, U>(value: T) {
 }
 
 // More flexible: accept T or &T
-fn process<T: AsRef<U> + ?Sized, U: ?Sized>(value: &T) {
+fn process_borrowed<T: AsRef<U> + ?Sized, U: ?Sized>(value: &T) {
     let inner: &U = value.as_ref();
 }
 ```

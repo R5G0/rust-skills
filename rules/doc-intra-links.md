@@ -4,7 +4,7 @@
 
 ## Why It Matters
 
-Intra-doc links (`[TypeName]`, `[method](Self::method)`) create clickable references in generated documentation. They're verified at doc-build time, catching broken links early. Unlike URL links, they automatically update when items are renamed or moved.
+Intra-doc links (`[TypeName]`, `[method](Self::method)`) create clickable references in generated documentation. They resolve through Rust item paths instead of hard-coded generated HTML paths. Checking links when documentation is built catches stale references after an item is renamed or moved.
 
 ## Bad
 
@@ -26,21 +26,24 @@ pub fn parse<T: FromStr>(input: &str) -> Result<T, Error> {
 
 ## Good
 
+<!-- verify: compile -->
 ```rust
-/// Returns the length of the buffer.
-/// 
-/// See also [`capacity()`](Self::capacity) for the allocated size, and
-/// [`Buffer`] for more details.
-pub fn len(&self) -> usize {
-    self.data.len()
+/// Input accepted by [`run`].
+pub struct Config {
+    /// Name to greet.
+    pub name: String,
 }
 
-/// Parses the input using [`FromStr`] trait.
-/// Check [`Error`] for possible failures.
-///
-/// [`FromStr`]: std::str::FromStr
-pub fn parse<T: FromStr>(input: &str) -> Result<T, Error> {
-    // ...
+impl Config {
+    /// Construct a [`Config`] with an owned name.
+    pub fn new(name: impl Into<String>) -> Self {
+        Self { name: name.into() }
+    }
+}
+
+/// Greet the name supplied by [`Config::new`].
+pub fn run(config: Config) -> String {
+    format!("Hello, {}!", config.name)
 }
 ```
 
@@ -130,6 +133,14 @@ RUSTDOCFLAGS="-D warnings" cargo doc --no-deps
 ```
 
 This fails if any intra-doc links are broken.
+
+## Verified Project
+
+<!-- verify: fixture=layouts -->
+
+See the real [validation fixture source](../checks/fixtures/layouts/flat-tool/src/config.rs). Config links to crate::run and its constructor links to Config. The workspace denies broken intra-doc links; cargo doc --workspace --no-deps checks those actual links.
+
+Run from `checks/fixtures/layouts` with Rust 1.97.1: `cargo test --workspace --all-targets`, `cargo test --workspace --doc`, `cargo doc --workspace --no-deps`, `cargo fmt --all --check`, and `cargo clippy --workspace --all-targets -- -D warnings`.
 
 ## See Also
 

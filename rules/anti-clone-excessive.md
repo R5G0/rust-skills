@@ -35,27 +35,27 @@ fn get_name(&self) -> String {
 
 ## Good
 
+<!-- verify: compile -->
 ```rust
-// Accept reference if only reading
-fn print_name(name: &str) {
-    println!("{}", name);
-}
-let name = "Alice".to_string();
-print_name(&name);  // Borrow, no clone
-
-// Iterate by reference
-for item in &items {
-    process(item);
+struct User {
+    name: String,
 }
 
-// Compare by reference
-if input == expected {
-    // ...
+impl User {
+    fn name(&self) -> &str {
+        &self.name
+    }
 }
 
-// Return reference when possible
-fn get_name(&self) -> &str {
-    &self.name
+fn total_name_bytes(users: &[User]) -> usize {
+    users.iter().map(|user| user.name().len()).sum()
+}
+
+fn main() {
+    let users = vec![User { name: "Alice".to_owned() }];
+    assert_eq!(total_name_bytes(&users), 5);
+    // The collection and its names are still owned by the caller.
+    assert_eq!(users[0].name(), "Alice");
 }
 ```
 

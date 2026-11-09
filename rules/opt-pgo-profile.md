@@ -1,10 +1,10 @@
 # opt-pgo-profile
 
-> Use Profile-Guided Optimization (PGO) for maximum performance
+> Train PGO with representative workloads and validate the optimized build
 
 ## Why It Matters
 
-PGO uses real runtime behavior to guide compiler optimization decisions. By profiling actual workloads, the compiler learns which code paths are hot, optimizing them aggressively while deprioritizing cold paths. This can yield 10-30% performance improvements beyond standard optimizations.
+PGO uses collected runtime behavior to guide compiler decisions. Its benefit depends on how well the training workload matches deployment, the compiler, and the program. Validate outputs and measure representative workloads; a fixed percentage improvement is not guaranteed.
 
 ## The PGO Process
 
@@ -159,6 +159,12 @@ jobs:
 | Performance-critical apps | Libraries (users can PGO) |
 | Stable workload patterns | Highly variable workloads |
 | Sufficient profiling data | Quick iteration cycles |
+
+## Verified Project
+
+<!-- verify: fixture=optimization -->
+
+The [verification runner](../checks/verify_rules.py) builds the [real fixture](../checks/fixtures/optimization/src/main.rs) with instrumentation, runs training inputs, merges fresh profiles with the toolchain's `llvm-profdata`, rebuilds using the profile, and checks the optimized executable's output. Use absolute profile paths, the same target/compiler settings, and compatible LLVM tools. Install them with `rustup component add llvm-tools-preview --toolchain 1.97.1`. This validates the build workflow, not an application speedup. See the [rustc PGO workflow](https://doc.rust-lang.org/rustc/profile-guided-optimization.html).
 
 ## See Also
 

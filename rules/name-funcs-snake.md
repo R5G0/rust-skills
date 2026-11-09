@@ -20,28 +20,21 @@ fn fetchOrder() -> Order { ... }  // Mixed conventions
 
 ## Good
 
+<!-- verify: compile -->
 ```rust
-// snake_case for functions
-fn calculate_total() -> f64 { ... }
-fn get_user_name() -> String { ... }
-fn fetch_order() -> Order { ... }
-
-// snake_case for methods
-impl User {
-    fn full_name(&self) -> String { ... }
-    fn is_active(&self) -> bool { ... }
-    fn set_email(&mut self, email: &str) { ... }
+mod user_service {
+    pub fn calculate_total(unit_price: u32, item_count: u32) -> u32 { unit_price * item_count }
 }
-
-// snake_case for variables
-let user_count = 42;
-let max_connections = 100;
-let is_valid = true;
-
-// snake_case for modules
-mod user_service;
-mod http_client;
-mod json_parser;
+struct User { first_name: String, last_name: String }
+impl User {
+    fn full_name(&self) -> String { format!("{} {}", self.first_name, self.last_name) }
+}
+fn main() {
+    let user_count = user_service::calculate_total(3, 4);
+    let user = User { first_name: String::from("Ada"), last_name: String::from("Lovelace") };
+    assert_eq!(user_count, 12);
+    assert_eq!(user.full_name(), "Ada Lovelace");
+}
 ```
 
 ## Acronyms in snake_case

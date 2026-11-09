@@ -33,16 +33,18 @@ fn load_config_bad() -> Config {
 
 ## Good
 
+<!-- verify: compile -->
 ```rust
-fn load_config() -> Result<Config, Error> {
-    let content = std::fs::read_to_string("config.toml")?;
-    let config = toml::from_str(&content)?;
-    Ok(config)
+fn parse_pair(left: &str, right: &str) -> Result<(u32, u32), std::num::ParseIntError> {
+    let left = left.parse()?;
+    let right = right.parse()?;
+    Ok((left, right))
 }
 
-// Even more concise
-fn load_config() -> Result<Config, Error> {
-    Ok(toml::from_str(&std::fs::read_to_string("config.toml")?)?)
+fn main() {
+    assert_eq!(parse_pair("20", "22"), Ok((20, 22)));
+    assert!(parse_pair("invalid", "22").is_err());
+    assert!(parse_pair("20", "invalid").is_err());
 }
 ```
 
@@ -129,8 +131,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-// Option 2: Handle in main, exit on error
-fn main() {
+// Option 2: Handle errors explicitly (use this body as main in an application).
+fn main_with_custom_exit() {
     if let Err(e) = run() {
         eprintln!("Error: {:#}", e);
         std::process::exit(1);

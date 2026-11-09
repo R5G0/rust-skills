@@ -123,6 +123,14 @@ src/
 │   └── shared.rs
 ```
 
+## Verified Project
+
+<!-- verify: fixture=layouts -->
+
+See the real [validation fixture source](../checks/fixtures/layouts/feature-tool/src/user/mod.rs). The user feature owns model.rs and repository.rs and exposes a small public API. The feature-tool crate tests known and missing users.
+
+Run from `checks/fixtures/layouts` with Rust 1.97.1: `cargo test --workspace --all-targets`, `cargo test --workspace --doc`, `cargo doc --workspace --no-deps`, `cargo fmt --all --check`, and `cargo clippy --workspace --all-targets -- -D warnings`.
+
 ## See Also
 
 - [proj-flat-small](./proj-flat-small.md) - Keep small projects flat

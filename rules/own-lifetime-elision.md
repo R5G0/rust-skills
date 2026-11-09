@@ -27,10 +27,15 @@ impl<'a> Display for Wrapper<'a> {
 
 ## Good
 
+<!-- verify: compile -->
 ```rust
-// Let elision do its job
-fn first_word(s: &str) -> &str {
-    s.split_whitespace().next().unwrap_or("")
+use std::fmt::{self, Display, Formatter};
+
+struct Person { name: String }
+struct Wrapper<'a>(&'a str);
+
+fn first_word(input: &str) -> &str {
+    input.split_whitespace().next().unwrap_or("")
 }
 
 fn get_name(person: &Person) -> &str {
@@ -38,33 +43,45 @@ fn get_name(person: &Person) -> &str {
 }
 
 impl Display for Wrapper<'_> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
+    fn fmt(&self, formatter: &mut Formatter<'_>) -> fmt::Result {
+        write!(formatter, "{}", self.0)
     }
+}
+
+fn main() {
+    let person = Person { name: "Alice".into() };
+    assert_eq!(get_name(&person), "Alice");
+    assert_eq!(first_word("hello world"), "hello");
+    assert_eq!(Wrapper("borrowed").to_string(), "borrowed");
 }
 ```
 
 ## The Three Elision Rules
 
-1. **Each input reference gets its own lifetime:**
+1. Each input reference gets its own lifetime:
+
    ```rust
-   fn foo(x: &str, y: &str) 
-   // becomes
-   fn foo<'a, 'b>(x: &'a str, y: &'b str)
+   fn lengths(left: &str, right: &str) -> (usize, usize) { (left.len(), right.len()) }
+   fn lengths_explicit<'a, 'b>(left: &'a str, right: &'b str) -> (usize, usize) {
+       (left.len(), right.len())
+   }
    ```
 
-2. **One input reference → output gets same lifetime:**
+2. With one input reference, output references receive its lifetime:
+
    ```rust
-   fn foo(x: &str) -> &str
-   // becomes  
-   fn foo<'a>(x: &'a str) -> &'a str
+   fn identity(input: &str) -> &str { input }
+   fn identity_explicit<'a>(input: &'a str) -> &'a str { input }
    ```
 
-3. **Method with `&self`/`&mut self` → output gets self's lifetime:**
+3. For a method with `&self` or `&mut self`, elided output references receive the receiver's lifetime:
+
    ```rust
-   fn foo(&self, x: &str) -> &str
-   // becomes
-   fn foo<'a, 'b>(&'a self, x: &'b str) -> &'a str
+   struct Named { name: String }
+   impl Named {
+       fn name(&self, _other: &str) -> &str { &self.name }
+       fn name_explicit<'a, 'b>(&'a self, _other: &'b str) -> &'a str { &self.name }
+   }
    ```
 
 ## When Explicit Lifetimes ARE Required
@@ -114,17 +131,20 @@ fn process(data: &impl AsRef<str>) -> Cow<'_, str> { ... }
 ## Common Patterns
 
 ```rust
-// ✅ Elision works
-fn trim(s: &str) -> &str { s.trim() }
-fn first(v: &[i32]) -> Option<&i32> { v.first() }
-fn name(&self) -> &str { &self.name }
+fn trim(input: &str) -> &str { input.trim() }
+fn first(values: &[i32]) -> Option<&i32> { values.first() }
 
-// ❌ Elision fails - multiple inputs, ambiguous output
-fn pick(a: &str, b: &str, first: bool) -> &str // Error!
+// Multiple input references need an explicit relationship for this output.
+fn pick<'a>(left: &'a str, right: &'a str, first: bool) -> &'a str {
+    if first { left } else { right }
+}
+```
 
-// ✅ Fixed with explicit lifetime
-fn pick<'a>(a: &'a str, b: &'a str, first: bool) -> &'a str {
-    if first { a } else { b }
+Without that relationship the return lifetime is ambiguous:
+
+```rust,compile_fail
+fn pick(left: &str, right: &str, first: bool) -> &str {
+    if first { left } else { right }
 }
 ```
 

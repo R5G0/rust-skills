@@ -88,7 +88,7 @@ impl Connection<Authenticated> {
 // Bug: forgot to authenticate
 let conn = Connection::new();
 let conn = conn.connect("server:8080")?;
-conn.send(b"data");  // Compile error! send() not available on Connection<Connected>
+// conn.send(b"data");  // Compile error! send() not available on Connection<Connected>
 
 // Correct usage
 let conn = Connection::new();
@@ -141,7 +141,7 @@ impl RequestBuilder<BuilderWithUrl> {
 }
 
 // Compile error: build() not available
-let bad = RequestBuilder::new().build();
+// let bad = RequestBuilder::new().build();
 
 // Correct: must set URL first
 let good = RequestBuilder::new()
@@ -189,6 +189,27 @@ impl Transaction<InProgress> {
         let _ = self.conn.execute("ROLLBACK");
         self.conn
     }
+}
+```
+
+## Verified Example
+
+<!-- verify: compile -->
+```rust
+struct MissingUrl;
+struct WithUrl(String);
+struct RequestBuilder<State> { state: State }
+impl RequestBuilder<MissingUrl> {
+    fn new() -> Self { Self { state: MissingUrl } }
+    fn url(self, url: String) -> RequestBuilder<WithUrl> { RequestBuilder { state: WithUrl(url) } }
+}
+impl RequestBuilder<WithUrl> {
+    fn build(self) -> String { self.state.0 }
+}
+fn main() {
+    let url = RequestBuilder::new().url(String::from("https://example.com")).build();
+    assert_eq!(url, "https://example.com");
+    // RequestBuilder::new().build() is unavailable until url() changes the state.
 }
 ```
 

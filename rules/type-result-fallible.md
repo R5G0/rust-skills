@@ -64,8 +64,8 @@ fn process_file(path: &str) -> Result<ProcessedData, Error> {
     Ok(processed)
 }
 
-// Equivalent to:
-fn process_file(path: &str) -> Result<ProcessedData, Error> {
+// Equivalent manual propagation:
+fn process_file_manual(path: &str) -> Result<ProcessedData, Error> {
     let content = match std::fs::read_to_string(path) {
         Ok(c) => c,
         Err(e) => return Err(e.into()),
@@ -121,6 +121,23 @@ fn load_config(path: &str) -> Result<Config, ConfigError> {
         return Err(ConfigError::MissingField("name".into()));
     }
     Ok(config)
+}
+```
+
+## Verified Example
+
+<!-- verify: compile -->
+```rust
+#[derive(Debug, PartialEq)]
+enum DivisionError { DivideByZero, Overflow }
+fn divide(a: i32, b: i32) -> Result<i32, DivisionError> {
+    if b == 0 { return Err(DivisionError::DivideByZero); }
+    a.checked_div(b).ok_or(DivisionError::Overflow)
+}
+fn main() {
+    assert_eq!(divide(10, 2), Ok(5));
+    assert_eq!(divide(10, 0), Err(DivisionError::DivideByZero));
+    assert_eq!(divide(i32::MIN, -1), Err(DivisionError::Overflow));
 }
 ```
 

@@ -141,6 +141,14 @@ fn main() -> anyhow::Result<()> {
 }
 ```
 
+## Verified Project
+
+<!-- verify: fixture=layouts -->
+
+See the real [validation fixture source](../checks/fixtures/layouts/flat-tool/src/main.rs). The entry point delegates to layout_flat_tool::run. tests/public_api.rs calls the same library API without invoking a process.
+
+Run from `checks/fixtures/layouts` with Rust 1.97.1: `cargo test --workspace --all-targets`, `cargo test --workspace --doc`, `cargo doc --workspace --no-deps`, `cargo fmt --all --check`, and `cargo clippy --workspace --all-targets -- -D warnings`.
+
 ## See Also
 
 - [proj-bin-dir](proj-bin-dir.md) - Put multiple binaries in src/bin/

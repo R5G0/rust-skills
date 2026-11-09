@@ -49,21 +49,14 @@ process(42u64);  // Works!
 ## Blanket Implementation
 
 ```rust
-// This is in std, you don't write it
-impl<T, U> Into<U> for T
-where
-    U: From<T>,
-{
-    fn into(self) -> U {
-        U::from(self)
-    }
+// The blanket Into implementation belongs to std. A downstream crate writes
+// only its own From implementation, then exercises the blanket automatically.
+struct MyType(String);
+impl From<String> for MyType {
+    fn from(value: String) -> Self { Self(value) }
 }
-
-// So when you implement From:
-impl From<String> for MyType { ... }
-
-// You automatically get:
-// impl Into<MyType> for String { ... }
+let converted: MyType = String::from("value").into();
+assert_eq!(converted.0, "value");
 ```
 
 ## Multiple From Implementations

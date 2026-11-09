@@ -44,23 +44,34 @@ impl Buffer {
 
 ## Good
 
+<!-- verify: compile -->
 ```rust
-pub fn read_data(ptr: *const u8, len: usize) -> &[u8] {
-    // SAFETY: Caller guarantees:
-    // - ptr is valid for reads of len bytes
-    // - ptr is properly aligned for u8
-    // - the memory is initialized
-    // - no mutable references exist to this memory
-    unsafe {
-        std::slice::from_raw_parts(ptr, len)
-    }
+/// Borrow initialized bytes from a raw pointer.
+///
+/// # Safety
+///
+/// `ptr` must be non-null, properly aligned, and valid for `len` initialized
+/// bytes within one allocation. The region must remain live and immutable for
+/// the chosen lifetime `'a`, and its total size must not exceed `isize::MAX`.
+pub unsafe fn read_data<'a>(ptr: *const u8, len: usize) -> &'a [u8] {
+    // SAFETY: The caller upholds from_raw_parts' allocation, validity,
+    // aliasing, and lifetime requirements documented above.
+    unsafe { std::slice::from_raw_parts(ptr, len) }
+}
+
+pub struct Buffer {
+    data: Vec<u8>,
 }
 
 impl Buffer {
-    pub fn get_unchecked(&self, index: usize) -> &u8 {
-        debug_assert!(index < self.len(), "index out of bounds");
-        // SAFETY: We verified index < len in debug builds.
-        // Callers must ensure index is within bounds.
+    /// Return a byte without a bounds check.
+    ///
+    /// # Safety
+    ///
+    /// `index` must be less than the length of the backing vector.
+    pub unsafe fn get_unchecked(&self, index: usize) -> &u8 {
+        // SAFETY: The caller guarantees index < self.data.len().
+        // A debug assertion alone would not establish that release invariant.
         unsafe { self.data.get_unchecked(index) }
     }
 }
@@ -93,10 +104,14 @@ let boxed = unsafe { Box::from_raw(ptr) };
 ### Unchecked Operations
 
 ```rust
-// SAFETY: We just checked that i < self.len() above.
-// The bounds check cannot be elided by the optimizer
-// because len() is not inlined.
-unsafe { self.data.get_unchecked(i) }
+fn checked_first(data: &[u8]) -> Option<&u8> {
+    if data.is_empty() {
+        return None;
+    }
+    // SAFETY: The preceding emptiness check establishes that index 0 is valid.
+    Some(unsafe { data.get_unchecked(0) })
+}
+// Ordinary application code should prefer data.first() for this operation.
 ```
 
 ### FFI Calls
@@ -104,7 +119,8 @@ unsafe { self.data.get_unchecked(i) }
 ```rust
 // SAFETY: libc::getenv is safe to call with a null-terminated
 // string. We ensure null termination with CString::new.
-// The returned pointer is valid for the lifetime of the environment.
+// Do not retain or dereference the returned pointer across environment
+// mutation; further validity and synchronization obligations still apply.
 let value = unsafe { libc::getenv(key.as_ptr()) };
 ```
 

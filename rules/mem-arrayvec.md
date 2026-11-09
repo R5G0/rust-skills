@@ -42,8 +42,7 @@ fn parse_options(input: &str) -> ArrayVec<Option<u32>, 8> {
     options
 }
 
-// For embedded/no_std contexts
-#[no_std]
+// In a no_std crate, put #![no_std] at the crate root, not on this function.
 fn collect_readings() -> ArrayVec<SensorReading, 16> {
     let mut readings = ArrayVec::new();
     for sensor in SENSORS.iter() {
@@ -119,8 +118,10 @@ fn format_code(code: u32) -> ArrayString<16> {
 
 ```rust
 // ❌ When size varies widely
-fn parse_json_array(json: &str) -> ArrayVec<Value, ???> {
-    // What capacity? JSON arrays can be any size
+// An unconstrained JSON array has no appropriate fixed ArrayVec capacity.
+// Use a growable Vec for this input contract instead.
+fn parse_json_array(json: &str) -> serde_json::Result<Vec<serde_json::Value>> {
+    serde_json::from_str(json)
 }
 
 // ❌ When capacity is very large

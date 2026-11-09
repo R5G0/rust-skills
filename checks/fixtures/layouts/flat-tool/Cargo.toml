@@ -1,0 +1,20 @@
+[package]
+name = "layout-flat-tool"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Runnable project-layout and documentation validation fixture"
+repository = "https://github.com/R5G0/rust-skills"
+documentation = "https://docs.rs/layout-flat-tool"
+readme = "README.md"
+keywords = ["validation", "examples"]
+categories = ["development-tools::testing"]
+publish = false
+default-run = "layout-flat-tool"
+
+[dependencies]
+layout-shared.workspace = true
+
+[lints]
+workspace = true

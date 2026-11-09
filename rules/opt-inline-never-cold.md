@@ -133,14 +133,14 @@ fn process(data: Option<&Data>) -> Result<Output, Error> {
     }
 }
 
-// Stable alternative: structure code so hot path is "fall through"
-fn process(data: Option<&Data>) -> Result<Output, Error> {
+// Stable alternative: make the main flow clear; an early return is not a probability hint.
+fn process_stable(data: Option<&Data>) -> Result<Output, Error> {
     let data = match data {
         Some(d) => d,
-        None => return cold_none_error(),  // Early return = unlikely hint
+        None => return cold_none_error(),
     };
     
-    // Compiler assumes code after early returns is "hot"
+    // Measure any code-layout effect; it is not guaranteed by syntax.
     fast_process(data)
 }
 ```
@@ -149,7 +149,7 @@ fn process(data: Option<&Data>) -> Result<Output, Error> {
 
 ```rust
 // Before: cold code inline
-fn hot_function(x: i32) -> i32 {
+fn hot_function_before(x: i32) -> i32 {
     if x < 0 {
         log::error!("Negative value: {}", x);
         eprintln!("Debug info: {:?}", std::backtrace::Backtrace::capture());
@@ -159,7 +159,7 @@ fn hot_function(x: i32) -> i32 {
 }
 
 // After: cold code extracted
-fn hot_function(x: i32) -> i32 {
+fn hot_function_after(x: i32) -> i32 {
     if x < 0 {
         return handle_negative(x);
     }
@@ -174,6 +174,12 @@ fn handle_negative(x: i32) -> i32 {
     0
 }
 ```
+
+## Verified Project
+
+<!-- verify: fixture=optimization -->
+
+The [optimization fixture](../checks/fixtures/optimization/src/main.rs) compiles and tests a real cold error helper and hot success path. Attributes guide optimization; measure their effect before assuming faster code.
 
 ## See Also
 

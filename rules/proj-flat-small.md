@@ -126,6 +126,14 @@ src/
         └── mod.rs
 ```
 
+## Verified Project
+
+<!-- verify: fixture=layouts -->
+
+See the real [validation fixture source](../checks/fixtures/layouts/flat-tool/src/lib.rs). The small fixture keeps lib.rs, main.rs, and config.rs adjacent. Its shared application logic is exercised through an external integration test.
+
+Run from `checks/fixtures/layouts` with Rust 1.97.1: `cargo test --workspace --all-targets`, `cargo test --workspace --doc`, `cargo doc --workspace --no-deps`, `cargo fmt --all --check`, and `cargo clippy --workspace --all-targets -- -D warnings`.
+
 ## See Also
 
 - [proj-mod-by-feature](./proj-mod-by-feature.md) - Feature organization

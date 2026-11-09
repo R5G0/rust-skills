@@ -105,13 +105,21 @@ pub use queries::{UserQueries, OrderQueries};
 
 Pick one style for your project and stick with it:
 
-```rust
-// Cargo.toml or clippy.toml
+```toml
+# Cargo.toml
 [lints.clippy]
-mod_module_files = "warn"  # Enforces mod.rs style
-# OR
-self_named_module_files = "warn"  # Enforces adjacent style
+self_named_module_files = "warn"  # Prefer mod.rs instead of user.rs
+# OR (choose only one of these)
+mod_module_files = "warn"  # Prefer user.rs instead of user/mod.rs
 ```
+
+## Verified Project
+
+<!-- verify: fixture=layouts -->
+
+See the real [validation fixture source](../checks/fixtures/layouts/feature-tool/src/user/mod.rs). The fixture compiles the actual user/mod.rs, model.rs, and repository.rs file layout, including the model re-export.
+
+Run from `checks/fixtures/layouts` with Rust 1.97.1: `cargo test --workspace --all-targets`, `cargo test --workspace --doc`, `cargo doc --workspace --no-deps`, `cargo fmt --all --check`, and `cargo clippy --workspace --all-targets -- -D warnings`.
 
 ## See Also
 

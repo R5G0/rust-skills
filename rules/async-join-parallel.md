@@ -29,30 +29,21 @@ async fn read_configs() -> Result<(Config, Settings)> {
 
 ## Good
 
+<!-- verify: compile -->
 ```rust
-use tokio::join;
+use tokio::sync::oneshot;
 
-async fn fetch_data() -> (User, Posts, Comments) {
-    // Concurrent: ~100ms total (max of all three)
-    let (user, posts, comments) = join!(
-        fetch_user(),
-        fetch_posts(),
-        fetch_comments(),
-    );
-    
-    (user, posts, comments)
-}
-
-use tokio::try_join;
-
-async fn read_configs() -> Result<(Config, Settings)> {
-    // Concurrent: ~20ms total
-    let (config_str, settings_str) = try_join!(
-        fs::read_to_string("config.toml"),
-        fs::read_to_string("settings.json"),
-    )?;
-    
-    Ok((parse_config(&config_str)?, parse_settings(&settings_str)?))
+#[tokio::main(flavor = "current_thread")]
+async fn main() {
+    let (tx, rx) = oneshot::channel();
+    let receive = async { rx.await.expect("sender branch sends a value") };
+    let send = async {
+        tx.send(41).expect("receiver branch stays alive");
+        1
+    };
+    // Sequentially awaiting receive first would never reach send.
+    let (value, increment) = tokio::join!(receive, send);
+    assert_eq!(value + increment, 42);
 }
 ```
 
@@ -70,32 +61,28 @@ let (a, b, c) = try_join!(fallible_a, fallible_b, fallible_c)?;
 
 ## futures::join_all for Dynamic Collections
 
-```rust
-use futures::future::join_all;
+`join_all` preserves input order and waits for every future. Use `try_join_all` to return an error as soon as a fallible branch fails.
 
-async fn fetch_all_users(ids: &[u64]) -> Vec<User> {
-    let futures: Vec<_> = ids.iter()
-        .map(|id| fetch_user(*id))
-        .collect();
-    
-    join_all(futures).await
+```rust
+use futures::future::{join_all, try_join_all};
+
+async fn double(value: u32) -> u32 { value.saturating_mul(2) }
+
+async fn double_all(values: &[u32]) -> Vec<u32> {
+    join_all(values.iter().map(|&value| double(value))).await
 }
 
-// With fallible futures
-use futures::future::try_join_all;
-
-async fn fetch_all_users(ids: &[u64]) -> Result<Vec<User>> {
-    let futures: Vec<_> = ids.iter()
-        .map(|id| fetch_user(*id))
-        .collect();
-    
-    try_join_all(futures).await
+async fn parse_all(inputs: &[&str]) -> Result<Vec<u32>, std::num::ParseIntError> {
+    try_join_all(inputs.iter().map(|input| async move { input.parse::<u32>() })).await
 }
 ```
 
 ## Limiting Concurrency
 
 ```rust
+use anyhow::Result;
+use std::sync::Arc;
+use futures::future::join_all;
 use futures::stream::{self, StreamExt};
 
 async fn fetch_with_limit(ids: &[u64]) -> Vec<Result<User>> {
@@ -109,7 +96,7 @@ async fn fetch_with_limit(ids: &[u64]) -> Vec<Result<User>> {
 // Or with tokio::sync::Semaphore
 use tokio::sync::Semaphore;
 
-async fn fetch_with_semaphore(ids: &[u64]) -> Vec<User> {
+async fn fetch_with_semaphore(ids: &[u64]) -> Vec<Result<User>> {
     let semaphore = Arc::new(Semaphore::new(10));
     
     let futures: Vec<_> = ids.iter().map(|id| {
@@ -127,18 +114,16 @@ async fn fetch_with_semaphore(ids: &[u64]) -> Vec<User> {
 ## When NOT to Use join!
 
 ```rust
-// ❌ Dependent futures - must be sequential
+use anyhow::Result;
+
+// Dependent futures must be sequential.
 async fn create_and_populate() -> Result<()> {
     let db = create_database().await?;   // Must complete first
     populate_tables(&db).await?;          // Depends on db
     Ok(())
 }
 
-// ❌ Short-circuiting logic
-async fn find_first() -> Option<Data> {
-    // Want to stop when one succeeds
-    // Use select! instead
-}
+// For racing or early-exit logic, use select! rather than join!.
 
 // ❌ Shared mutable state
 async fn bad_shared_state() {

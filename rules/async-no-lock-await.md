@@ -27,31 +27,22 @@ async fn bad_update(state: &Mutex<State>) {
 
 ## Good
 
+<!-- verify: compile -->
 ```rust
-use tokio::sync::Mutex;
+use std::sync::Mutex;
 
-async fn good_update(state: &Mutex<State>) {
-    // Fetch data BEFORE taking the lock
-    let data = fetch_from_network().await;
-    
-    // Lock only for the quick update
-    let mut guard = state.lock().await;
-    guard.value = data;
-}  // Lock released immediately
+async fn update(state: &Mutex<u32>) {
+    // Perform independent asynchronous work before taking the synchronous lock.
+    tokio::task::yield_now().await;
+    let mut guard = state.lock().expect("another task panicked while holding the lock");
+    *guard += 1;
+}
 
-    // Alternative: Clone data out, process, then update
-async fn good_update_v2(state: &Mutex<State>) {
-    // Extract what we need
-    let id = {
-        let guard = state.lock().await;
-        guard.id.clone()
-    };  // Lock released!
-    
-    // Do async work without lock
-    let data = fetch_by_id(id).await;
-    
-    // Quick update
-    state.lock().await.value = data;
+#[tokio::main(flavor = "current_thread")]
+async fn main() {
+    let state = Mutex::new(0);
+    tokio::join!(update(&state), update(&state));
+    assert_eq!(*state.lock().expect("example does not panic under lock"), 2);
 }
 ```
 

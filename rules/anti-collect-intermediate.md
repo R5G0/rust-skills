@@ -43,27 +43,27 @@ fn sum_valid(items: &[Item]) -> i64 {
 
 ## Good
 
+<!-- verify: compile -->
 ```rust
-// Single allocation, single pass
-fn process(data: Vec<i32>) -> Vec<i32> {
-    data.into_iter()
-        .filter(|x| *x > 0)
-        .map(|x| x * 2)
-        .filter(|x| *x < 100)
-        .collect()
+#[derive(Clone, Copy)]
+struct Item {
+    value: i64,
+    valid: bool,
 }
 
-// No allocation - iterator short-circuits
 fn has_valid_items(items: &[Item]) -> bool {
-    items.iter().any(|i| i.is_valid())
+    items.iter().any(|item| item.valid)
 }
 
-// No intermediate allocation
 fn sum_valid(items: &[Item]) -> i64 {
-    items.iter()
-        .filter(|i| i.is_valid())
-        .map(|i| i.value)
-        .sum()
+    items.iter().filter(|item| item.valid).map(|item| item.value).sum()
+}
+
+fn main() {
+    let items = [Item { value: 2, valid: true }, Item { value: 99, valid: false }];
+    assert!(has_valid_items(&items));
+    assert_eq!(sum_valid(&items), 2);
+    assert!(!has_valid_items(&[]));
 }
 ```
 

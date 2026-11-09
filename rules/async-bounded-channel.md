@@ -32,27 +32,25 @@ tokio::spawn(async move {
 
 ## Good
 
+<!-- verify: compile -->
 ```rust
 use tokio::sync::mpsc;
 
-// Bounded channel - backpressure when full
-let (tx, mut rx) = mpsc::channel::<Message>(100);  // Max 100 items
-
-// Producer waits when channel full
-tokio::spawn(async move {
-    loop {
-        let msg = generate_message();
-        // Blocks if channel is full - natural backpressure
-        tx.send(msg).await.unwrap();
-    }
-});
-
-tokio::spawn(async move {
-    while let Some(msg) = rx.recv().await {
-        slow_process(msg).await;
-    }
-});
-// Memory usage capped at ~100 messages
+#[tokio::main(flavor = "current_thread")]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let (tx, mut rx) = mpsc::channel(2);
+    tx.send(1).await?;
+    tx.send(2).await?;
+    // Full capacity rejects try_send; send().await would wait for space.
+    assert!(matches!(tx.try_send(3), Err(mpsc::error::TrySendError::Full(3))));
+    assert_eq!(rx.recv().await, Some(1));
+    tx.send(3).await?;
+    drop(tx);
+    assert_eq!(rx.recv().await, Some(2));
+    assert_eq!(rx.recv().await, Some(3));
+    assert_eq!(rx.recv().await, None);
+    Ok(())
+}
 ```
 
 ## Choosing Buffer Size
@@ -136,35 +134,39 @@ let (tx, rx) = watch::channel::<State>(initial);
 
 ## Worker Pool Pattern
 
+The receiver mutex serializes dequeuing, while processing happens after releasing it. This example sorts the final values for deterministic output; worker execution order is unspecified.
+
 ```rust
-async fn process_with_workers(items: Vec<Item>) -> Vec<Result> {
-    let (tx, rx) = mpsc::channel(100);
+use std::sync::Arc;
+use tokio::sync::{mpsc, Mutex};
+
+async fn process_with_workers(items: Vec<u32>) -> Result<Vec<u32>, tokio::task::JoinError> {
+    let (tx, rx) = mpsc::channel::<u32>(100);
     let rx = Arc::new(Mutex::new(rx));
-    
-    // Spawn worker pool
     let workers: Vec<_> = (0..4).map(|_| {
-        let rx = rx.clone();
+        let rx = Arc::clone(&rx);
         tokio::spawn(async move {
+            let mut output = Vec::new();
             loop {
-                let item = {
-                    let mut rx = rx.lock().await;
-                    rx.recv().await
-                };
+                let item = rx.lock().await.recv().await;
                 match item {
-                    Some(item) => process(item).await,
+                    Some(item) => output.push(item.saturating_mul(2)),
                     None => break,
                 }
             }
+            output
         })
     }).collect();
-    
-    // Send items
     for item in items {
-        tx.send(item).await.unwrap();
+        tx.send(item).await.expect("workers stay alive while the producer sends");
     }
-    drop(tx);  // Signal workers to stop
-    
-    futures::future::join_all(workers).await;
+    drop(tx);
+    let mut output = Vec::new();
+    for worker in workers {
+        output.extend(worker.await?);
+    }
+    output.sort_unstable();
+    Ok(output)
 }
 ```
 

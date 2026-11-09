@@ -4,9 +4,9 @@
 
 ## Why It Matters
 
-Miri is the only tool that *dynamically* detects undefined behavior in Rust programs at test time. It catches out-of-bounds memory accesses, use-after-free, reads of uninitialized memory, invalid pointer provenance, data races in `unsafe` multithreaded code, and violations of the Stacked Borrows / Tree Borrows aliasing models. The Rust standard library, tokio, serde, and many foundational crates all run Miri in CI before merging changes that touch unsafe code.
+Miri interprets Rust programs and can detect undefined behavior on supported executed paths, including invalid memory accesses, uninitialized reads, pointer misuse, and data races. Its checks complement code review and ordinary tests.
 
-Static analysis and code review can miss subtle UB that only manifests at specific memory layouts; Miri's interpreted execution catches it unconditionally.
+A successful run is evidence about the inputs, execution, target, and toolchain tested; it does not prove soundness or explore every possible thread interleaving. Safe application code can also exercise unsafe implementations in dependencies, so the absence of local `unsafe` blocks alone does not establish that Miri has no value. See the [Miri project's documented limitations](https://github.com/rust-lang/miri#readme).
 
 ## Bad
 
@@ -46,17 +46,49 @@ jobs:
 ## Key Points
 
 - **Nightly only**: Miri requires a nightly toolchain. Pin a specific nightly date in `rust-toolchain.toml` if you need reproducible CI.
-- **Slow**: Miri interprets rather than compiles, so test suites run 100–1000× slower than normal. Run Miri on a reduced set of tests or on a separate slower CI job if the full suite is prohibitive.
+- **Slower execution**: Miri interprets the program. Measure the cost of your suite and use targeted tests or a separate job when a full run is impractical.
 - **`MIRIFLAGS`**: `-Zmiri-strict-provenance` enables stricter pointer provenance checks, catching casts that violate the provenance model. Add `-Zmiri-tree-borrows` to opt into the newer Tree Borrows model.
-- **Stacked Borrows**: Miri's default aliasing model. It catches violations of Rust's borrow rules at the pointer level — invaluable for raw-pointer and FFI code.
+- **Aliasing models and flags**: available models, defaults, and flags can change with nightly. Record the pinned toolchain and `MIRIFLAGS`; consult that version's documentation rather than assuming results apply to future compilers.
 - **Setup command**: `cargo miri setup` pre-builds the Miri sysroot so the first test run is not cold. Run it once per CI cache key.
-- Only crates with `unsafe` blocks need Miri coverage. Pure-safe crates gain nothing from it.
+- Select tests that exercise the relevant unsafe implementation, including unsafe code reached through safe dependency APIs.
 
 ## When It's Acceptable to Skip
 
-- Crates with zero `unsafe` code (safe-only crates get no benefit).
-- Generated code or proc-macro output you do not control (audit the generator instead).
+- A project-specific coverage assessment shows the selected tests exercise no relevant unsafe implementation, including dependencies; zero local `unsafe` blocks alone is insufficient.
+- A specific generated-code path cannot run under Miri; document the unsupported operation and complement testing with a generator audit rather than exempting all generated code.
 - Very large integration tests that make Miri impractical — run a targeted unit-test subset instead.
+
+## Verified Example
+
+This small unsafe helper has tests suitable for `cargo miri test`. Compiling the example checks its types; detecting undefined behavior still requires running the tests under Miri.
+
+<!-- verify: compile -->
+```rust
+fn first_raw(values: &[u32]) -> Option<u32> {
+    if values.is_empty() {
+        return None;
+    }
+    // SAFETY: the nonempty slice guarantees a live, aligned first u32;
+    // u32 is Copy, so reading it does not move out an owned non-Copy value.
+    Some(unsafe { values.as_ptr().read() })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::first_raw;
+
+    #[test]
+    fn reads_a_live_first_element_or_reports_empty_input() {
+        assert_eq!(first_raw(&[]), None);
+        assert_eq!(first_raw(&[7, 9]), Some(7));
+    }
+}
+
+fn main() {
+    assert_eq!(first_raw(&[]), None);
+    assert_eq!(first_raw(&[7, 9]), Some(7));
+}
+```
 
 ## See Also
 

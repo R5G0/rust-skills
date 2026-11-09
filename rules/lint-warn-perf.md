@@ -42,14 +42,14 @@ for x in vec![1, 2, 3] { }  // Use array: [1, 2, 3]
 
 ```rust
 // WARN: Single-character string patterns
-s.starts_with("x")  // Use char: 'x'
-s.contains("a")     // Use char: 'a'
+s.starts_with("x");  // Use char: 'x'
+s.contains("a");     // Use char: 'a'
 
 // WARN: iter().nth(0) instead of first()
-iter.nth(0)  // Use: iter.first() or iter.next()
+iter.nth(0);  // Use: iter.first() or iter.next()
 
 // WARN: Manual saturating arithmetic
-if x > i32::MAX - y { i32::MAX } else { x + y }
+if x > i32::MAX - y { i32::MAX } else { x + y };
 // Use: x.saturating_add(y)
 ```
 
@@ -60,7 +60,7 @@ if x > i32::MAX - y { i32::MAX } else { x + y }
 vec.extend(std::iter::once(item));  // Use: vec.push(item)
 
 // WARN: Inefficient to_vec
-slice.iter().cloned().collect::<Vec<_>>()  // Use: slice.to_vec()
+slice.iter().cloned().collect::<Vec<_>>();  // Use: slice.to_vec()
 
 // WARN: Manual string concatenation
 let s = format!("{}{}", a, b);  // When both are &str, use: a.to_owned() + b
@@ -83,7 +83,7 @@ let s = format!("{}{}", a, b);  // When both are &str, use: a.to_owned() + b
 
 ```rust
 // Before (perf warnings)
-fn process(input: &str) -> String {
+fn process_before(input: &str) -> String {
     let parts: Vec<_> = input.split(",").collect();
     let mut result = String::new();
     for part in parts.iter() {
@@ -107,7 +107,7 @@ fn process(input: &str) -> String {
 
 ```rust
 // Unnecessary allocation
-let vec: Vec<i32> = vec![];  // Creates capacity
+let vec: Vec<i32> = vec![];  // Empty Vec, no heap allocation
 let vec: Vec<i32> = Vec::new();  // No allocation
 
 // Pre-allocation

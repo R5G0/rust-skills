@@ -30,6 +30,10 @@ struct Event {
 ## Good
 
 ```rust
+#[repr(u8)]
+enum EventKind { Created, Updated }
+
+#[repr(C)]
 struct Event {
     timestamp: u64,
     kind: EventKind,
@@ -142,7 +146,7 @@ const _: () = assert!(std::mem::size_of::<Node>() <= 64);
 
 // ✅ Types used in FFI / binary protocols
 #[repr(C)]
-struct WireFormat { /* ... */ }
+struct WireFormat { bytes: [u8; 256] }
 const _: () = assert!(std::mem::size_of::<WireFormat>() == 256);
 
 // ✅ Performance-critical types

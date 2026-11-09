@@ -32,54 +32,39 @@ fn load_config() -> Config {
 
 ## Good
 
+<!-- verify: compile -->
 ```rust
-// Invariant: after insert, key exists
-fn cache_and_get(&mut self, key: String, value: Value) -> &Value {
-    self.cache.insert(key.clone(), value);
-    self.cache.get(&key)
-        .expect("BUG: key must exist immediately after insert")
+use std::collections::HashMap;
+
+#[derive(Default)]
+struct Cache {
+    entries: HashMap<String, String>,
 }
 
-// Invariant: regex is compile-time constant
-fn create_parser() -> Regex {
-    Regex::new(r"^\d{4}-\d{2}-\d{2}$")
-        .expect("BUG: date regex is invalid - this is a compile-time constant")
+impl Cache {
+    fn insert_and_get(&mut self, key: String, value: String) -> &str {
+        self.entries.insert(key.clone(), value);
+        self.entries.get(&key).expect("BUG: key must exist immediately after insert")
+    }
 }
 
-// Invariant: already validated
-fn process_validated(data: ValidatedData) -> Result<Output, ProcessError> {
-    let value = data.required_field
-        .expect("BUG: ValidatedData guarantees required_field is Some");
-    // ...
-}
-
-// Invariant: type system guarantees
-fn get_first<T>(vec: Vec<T>) -> T 
-where 
-    Vec<T>: NonEmpty,  // Hypothetical trait
-{
-    vec.into_iter().next()
-        .expect("BUG: NonEmpty Vec cannot be empty")
+fn main() {
+    let mut cache = Cache::default();
+    assert_eq!(cache.insert_and_get("key".into(), "value".into()), "value");
 }
 ```
 
 ## expect() Message Guidelines
 
-Messages should:
-1. Start with "BUG:" or similar to indicate it's an invariant
-2. Explain WHY the invariant should hold
-3. Help developers fix the issue
+Messages should explain why the invariant holds and give enough context to diagnose a bug. A `BUG:` prefix is one useful convention, not a language requirement.
 
 ```rust
-// ❌ Bad messages
-.expect("failed")                    // No context
-.expect("should not be None")        // Doesn't explain why
-.expect("Invalid state")             // Vague
+let value = Some(42);
+// Too vague to explain the invariant:
+let _ = value.expect("failed");
 
-// ✅ Good messages
-.expect("BUG: HashMap entry exists after insert")
-.expect("BUG: validated input must parse - validation is broken")
-.expect("BUG: static regex compilation failed - regex syntax error in source")
+// Explain the established invariant:
+let _ = value.expect("BUG: value was populated immediately before this lookup");
 ```
 
 ## Pattern: Validate Once, expect() After

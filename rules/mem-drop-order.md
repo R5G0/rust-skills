@@ -69,22 +69,22 @@ Fields drop in declaration order, so the field at the top of the struct drops fi
 Local variables drop in **reverse** declaration order, which is often what you want (last-in, first-out). When the natural order is wrong, use explicit `drop`:
 
 ```rust
-fn process() {
-    let conn = open_connection();   // dropped third (last to drop)
-    let txn  = begin_transaction(); // dropped second
-    let guard = acquire_lock();     // dropped first — WRONG if txn needs the lock
+use std::cell::RefCell;
+use std::rc::Rc;
 
-    // fix: drop guard explicitly before txn and conn drop naturally
-    do_work(&txn);
-    drop(guard); // lock released here
-    txn.commit(); // runs before conn closes
-} // conn drops here
-# fn open_connection() -> () {}
-# fn begin_transaction() -> () {}
-# fn acquire_lock() -> () {}
-# fn do_work(_: &()) {}
-# trait Commit { fn commit(self); }
-# impl Commit for () { fn commit(self) {} }
+struct Guard { name: &'static str, events: Rc<RefCell<Vec<&'static str>>> }
+impl Drop for Guard { fn drop(&mut self) { self.events.borrow_mut().push(self.name); } }
+let events = Rc::new(RefCell::new(Vec::new()));
+{
+    let connection = Guard { name: "connection", events: Rc::clone(&events) };
+    let lock = Guard { name: "lock", events: Rc::clone(&events) };
+    let transaction = Guard { name: "transaction", events: Rc::clone(&events) };
+    // Commit/drop the transaction while the lock is still held.
+    drop(transaction);
+    drop(lock);
+    drop(connection);
+}
+assert_eq!(*events.borrow(), ["transaction", "lock", "connection"]);
 ```
 
 ## `ManuallyDrop` for Full Control

@@ -30,13 +30,13 @@ let x = 5;
 let y = x.clone();  // Just use: let y = x;
 
 // WARN: Redundant closure
-iter.map(|x| foo(x))  // Just use: iter.map(foo)
+iter.map(|x| foo(x));  // Just use: iter.map(foo)
 
 // WARN: Redundant pattern matching
 match result {
     Ok(x) => Ok(x),
     Err(e) => Err(e),
-}  // Just return result
+};  // Just return result
 ```
 
 ### Non-Idiomatic Patterns
@@ -95,7 +95,7 @@ impl Foo {
 
 ```rust
 // Before (style warnings)
-fn process(data: Vec<i32>) -> Option<i32> {
+fn process_before(data: Vec<i32>) -> Option<i32> {
     if data.len() == 0 {
         return None;
     }

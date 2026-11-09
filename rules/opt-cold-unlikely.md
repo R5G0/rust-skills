@@ -145,6 +145,12 @@ fn error_path() -> Error {
 // perf stat -e cache-misses,cache-references ./binary
 ```
 
+## Verified Project
+
+<!-- verify: fixture=optimization -->
+
+The [real optimization project](../checks/fixtures/optimization/Cargo.toml) compiles cold-path code and valid release profiles. Its tests exercise success and error behavior. Treat optimizer settings as measurement candidates rather than a guaranteed speedup.
+
 ## See Also
 
 - [opt-inline-never-cold](./opt-inline-never-cold.md) - Combining with inline(never)

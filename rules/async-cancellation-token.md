@@ -69,60 +69,55 @@ handle.await?;  // Task completes cleanly
 ```rust
 use tokio_util::sync::CancellationToken;
 
-// Create token
-let token = CancellationToken::new();
-
-// Clone for sharing (cheap Arc-based clone)
-let token2 = token.clone();
-
-// Check if cancelled (non-blocking)
-if token.is_cancelled() {
-    return;
+async fn token_example() {
+    let token = CancellationToken::new();
+    let shared = token.clone();
+    let child = token.child_token();
+    assert!(!token.is_cancelled());
+    shared.cancel();
+    token.cancelled().await;
+    assert!(child.is_cancelled());
 }
-
-// Wait for cancellation (async)
-token.cancelled().await;
-
-// Trigger cancellation
-token.cancel();
-
-// Child tokens - cancelled when parent is cancelled
-let child = token.child_token();
 ```
 
 ## Hierarchical Cancellation
 
+Dropping a token does not cancel it. Cancel explicitly or use a drop guard when child tasks must be notified on every return path, including errors.
+
 ```rust
-async fn run_server(shutdown: CancellationToken) {
-    let listener = TcpListener::bind("0.0.0.0:8080").await?;
-    
+use tokio::io::AsyncReadExt;
+use tokio::net::{TcpListener, TcpStream};
+use tokio_util::sync::CancellationToken;
+
+async fn run_server(shutdown: CancellationToken) -> std::io::Result<()> {
+    let _cancel_on_exit = shutdown.clone().drop_guard();
+    let listener = TcpListener::bind("127.0.0.1:8080").await?;
     loop {
         tokio::select! {
-            _ = shutdown.cancelled() => {
-                println!("Server shutting down");
-                break;
-            }
-            result = listener.accept() => {
-                let (socket, _) = result?;
-                // Each connection gets child token
-                let conn_token = shutdown.child_token();
-                tokio::spawn(handle_connection(socket, conn_token));
+            _ = shutdown.cancelled() => break,
+            connection = listener.accept() => {
+                let (socket, _) = connection?;
+                let child = shutdown.child_token();
+                tokio::spawn(async move {
+                    if let Err(error) = handle_connection(socket, child).await {
+                        tracing::warn!(%error, "connection failed");
+                    }
+                });
             }
         }
     }
-    
-    // Child tokens auto-cancelled when we exit
+    // The guard cancels all child tokens. Join connection handles as well
+    // when the caller needs to wait for their cleanup before returning.
+    Ok(())
 }
 
-async fn handle_connection(socket: TcpStream, token: CancellationToken) {
+async fn handle_connection(mut socket: TcpStream, token: CancellationToken) -> std::io::Result<()> {
+    let mut buffer = [0_u8; 1024];
     loop {
         tokio::select! {
-            _ = token.cancelled() => {
-                // Connection cleanup
-                break;
-            }
-            data = socket.read() => {
-                // Handle data
+            _ = token.cancelled() => return Ok(()),
+            read = socket.read(&mut buffer) => {
+                if read? == 0 { return Ok(()); }
             }
         }
     }
@@ -132,46 +127,42 @@ async fn handle_connection(socket: TcpStream, token: CancellationToken) {
 ## Graceful Shutdown Pattern
 
 ```rust
-use tokio::signal;
+use anyhow::{Context, Result};
+use std::time::Duration;
+use tokio::{signal, task::JoinSet};
+use tokio_util::sync::CancellationToken;
 
+#[tokio::main]
 async fn main() -> Result<()> {
     let shutdown = CancellationToken::new();
-    
-    // Spawn signal handler
-    let shutdown_trigger = shutdown.clone();
+    let trigger = shutdown.clone();
     tokio::spawn(async move {
-        signal::ctrl_c().await.expect("failed to listen for Ctrl+C");
-        println!("Received Ctrl+C, initiating shutdown...");
-        shutdown_trigger.cancel();
+        signal::ctrl_c().await.expect("failed to register Ctrl+C listener");
+        trigger.cancel();
     });
-    
-    // Run application with shutdown token
     run_app(shutdown).await
 }
 
+async fn worker(shutdown: CancellationToken) -> Result<()> {
+    shutdown.cancelled().await;
+    Ok(())
+}
+
 async fn run_app(shutdown: CancellationToken) -> Result<()> {
+    let _cancel_on_exit = shutdown.clone().drop_guard();
     let mut tasks = JoinSet::new();
-    
-    tasks.spawn(worker_task(shutdown.child_token()));
-    tasks.spawn(server_task(shutdown.child_token()));
-    
-    // Wait for shutdown or task completion
+    tasks.spawn(worker(shutdown.child_token()));
+    tasks.spawn(worker(shutdown.child_token()));
     tokio::select! {
-        _ = shutdown.cancelled() => {
-            println!("Shutdown requested, waiting for tasks...");
-        }
-        Some(result) = tasks.join_next() => {
-            // A task completed/failed
-            result??;
-        }
+        _ = shutdown.cancelled() => {},
+        Some(result) = tasks.join_next() => { result??; },
     }
-    
-    // Wait for remaining tasks with timeout
-    tokio::time::timeout(
-        Duration::from_secs(30),
-        async { while tasks.join_next().await.is_some() {} }
-    ).await.ok();
-    
+    // Cancel siblings even when a task completed before the signal arrived.
+    shutdown.cancel();
+    tokio::time::timeout(Duration::from_secs(30), async {
+        while let Some(result) = tasks.join_next().await { result??; }
+        Ok::<(), anyhow::Error>(())
+    }).await.context("workers exceeded the shutdown grace period")??;
     Ok(())
 }
 ```

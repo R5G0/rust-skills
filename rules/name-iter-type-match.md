@@ -9,23 +9,19 @@ Iterator types should match the method that creates them. `iter()` returns `Iter
 ## Standard Library Pattern
 
 ```rust
-// Vec
-impl<T> Vec<T> {
-    fn iter(&self) -> Iter<'_, T> { }       // Returns Iter
-    fn iter_mut(&mut self) -> IterMut<'_, T> { }  // Returns IterMut
-}
+use std::collections::HashMap;
 
-impl<T> IntoIterator for Vec<T> {
-    type IntoIter = IntoIter<T>;  // Returns IntoIter
-}
+let mut values = vec![1, 2];
+let iter: std::slice::Iter<'_, i32> = values.iter();
+assert_eq!(iter.copied().sum::<i32>(), 3);
+let iter_mut: std::slice::IterMut<'_, i32> = values.iter_mut();
+for value in iter_mut { *value += 1; }
+let owned: std::vec::IntoIter<i32> = values.into_iter();
+assert_eq!(owned.collect::<Vec<_>>(), [2, 3]);
 
-// HashMap
-impl<K, V> HashMap<K, V> {
-    fn iter(&self) -> Iter<'_, K, V> { }
-    fn keys(&self) -> Keys<'_, K, V> { }    // Returns Keys
-    fn values(&self) -> Values<'_, K, V> { }  // Returns Values
-    fn drain(&mut self) -> Drain<'_, K, V> { }  // Returns Drain
-}
+let map = HashMap::from([("a", 1)]);
+let keys: std::collections::hash_map::Keys<'_, &str, i32> = map.keys();
+assert_eq!(keys.count(), 1);
 ```
 
 ## Implementation
@@ -109,16 +105,30 @@ mod my_collection {
 ## Custom Iterator Methods
 
 ```rust
+type NodeId = usize;
+struct Graph { nodes: Vec<NodeId>, edges: Vec<(NodeId, NodeId)> }
+pub struct Nodes<'a> { inner: std::slice::Iter<'a, NodeId> }
+pub struct Edges<'a> { inner: std::slice::Iter<'a, (NodeId, NodeId)> }
+pub struct Neighbors<'a> { inner: Box<dyn Iterator<Item = NodeId> + 'a> }
 impl Graph {
-    // Method name -> Type name
-    fn nodes(&self) -> Nodes<'_> { }        // Custom: Nodes
-    fn edges(&self) -> Edges<'_> { }        // Custom: Edges
-    fn neighbors(&self, node: NodeId) -> Neighbors<'_> { }  // Custom: Neighbors
+    fn nodes(&self) -> Nodes<'_> { Nodes { inner: self.nodes.iter() } }
+    fn edges(&self) -> Edges<'_> { Edges { inner: self.edges.iter() } }
+    fn neighbors(&self, node: NodeId) -> Neighbors<'_> {
+        Neighbors { inner: Box::new(self.edges.iter().filter_map(move |&(from, to)| (from == node).then_some(to))) }
+    }
 }
-
-pub struct Nodes<'a> { /* ... */ }
-pub struct Edges<'a> { /* ... */ }
-pub struct Neighbors<'a> { /* ... */ }
+impl<'a> Iterator for Nodes<'a> {
+    type Item = &'a NodeId;
+    fn next(&mut self) -> Option<Self::Item> { self.inner.next() }
+}
+impl<'a> Iterator for Edges<'a> {
+    type Item = &'a (NodeId, NodeId);
+    fn next(&mut self) -> Option<Self::Item> { self.inner.next() }
+}
+impl Iterator for Neighbors<'_> {
+    type Item = NodeId;
+    fn next(&mut self) -> Option<Self::Item> { self.inner.next() }
+}
 ```
 
 ## Bad

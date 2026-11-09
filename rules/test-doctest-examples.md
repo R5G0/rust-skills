@@ -32,32 +32,18 @@ pub fn add(a: i32, b: i32) -> i32 {
 ## Good
 
 ```rust
-/// Parses a number from a string.
-/// 
+/// Parse a port number.
+///
 /// # Examples
-/// 
+///
 /// ```
-/// use my_crate::parse;
-/// 
-/// let n = parse("42");
-/// assert_eq!(n, 42);
+/// # use layout_flat_tool::parse_port;
+/// let port = parse_port("8080")?;
+/// assert_eq!(port, 8080);
+/// # Ok::<(), std::num::ParseIntError>(())
 /// ```
-pub fn parse(s: &str) -> i32 {
-    s.parse().unwrap()
-}
-
-/// Adds two numbers.
-/// 
-/// # Examples
-/// 
-/// ```
-/// use my_crate::add;
-/// 
-/// let sum = add(1, 2);
-/// assert_eq!(sum, 3);
-/// ```
-pub fn add(a: i32, b: i32) -> i32 {
-    a + b
+pub fn parse_port(input: &str) -> Result<u16, std::num::ParseIntError> {
+    input.parse()
 }
 ```
 
@@ -160,6 +146,14 @@ cargo test --doc
 # Run doctests for specific item
 cargo test --doc my_function
 ```
+
+## Verified Project
+
+<!-- verify: fixture=layouts -->
+
+See the real [validation fixture source](../checks/fixtures/layouts/flat-tool/src/lib.rs). Three doctests assert run and parse_port behavior. cargo test --doc executes them via rustdoc, including hidden setup and typed error propagation.
+
+Run from `checks/fixtures/layouts` with Rust 1.97.1: `cargo test --workspace --all-targets`, `cargo test --workspace --doc`, `cargo doc --workspace --no-deps`, `cargo fmt --all --check`, and `cargo clippy --workspace --all-targets -- -D warnings`.
 
 ## See Also
 

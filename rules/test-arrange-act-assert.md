@@ -22,32 +22,75 @@ fn test_user() {
 
 ## Good
 
+<!-- verify: compile -->
 ```rust
-#[test]
-fn new_user_has_correct_name() {
-    // Arrange
-    let name = "alice";
-    let email = "alice@example.com";
-    
-    // Act
-    let user = User::new(name, email).unwrap();
-    
-    // Assert
-    assert_eq!(user.name(), "alice");
+#[derive(Debug, PartialEq, Eq)]
+enum UserError {
+    EmptyName,
+    InvalidEmail,
 }
 
-#[test]
-fn user_creation_fails_with_empty_name() {
-    // Arrange
-    let name = "";
-    let email = "email@example.com";
-    
-    // Act
-    let result = User::new(name, email);
-    
-    // Assert
-    assert!(result.is_err());
-    assert!(matches!(result, Err(UserError::EmptyName)));
+#[derive(Debug)]
+struct User {
+    name: String,
+    email: String,
+}
+
+impl User {
+    fn new(name: &str, email: &str) -> Result<Self, UserError> {
+        if name.is_empty() {
+            return Err(UserError::EmptyName);
+        }
+        if !email.contains('@') {
+            return Err(UserError::InvalidEmail);
+        }
+        Ok(Self { name: name.to_owned(), email: email.to_owned() })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn new_user_preserves_name_and_email() {
+        // Arrange
+        let name = "alice";
+        let email = "alice@example.com";
+
+        // Act
+        let user = User::new(name, email).expect("valid user input");
+
+        // Assert
+        assert_eq!(user.name, "alice");
+        assert_eq!(user.email, "alice@example.com");
+    }
+
+    #[test]
+    fn user_creation_rejects_empty_name() {
+        // Arrange
+        let name = "";
+        let email = "alice@example.com";
+
+        // Act
+        let result = User::new(name, email);
+
+        // Assert
+        assert!(matches!(result, Err(UserError::EmptyName)));
+    }
+
+    #[test]
+    fn user_creation_rejects_email_without_at_sign() {
+        // Arrange
+        let name = "alice";
+        let email = "invalid";
+
+        // Act
+        let result = User::new(name, email);
+
+        // Assert
+        assert!(matches!(result, Err(UserError::InvalidEmail)));
+    }
 }
 ```
 

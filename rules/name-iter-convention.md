@@ -66,7 +66,7 @@ impl<'a, T> IntoIterator for &'a mut MyCollection<T> {
 ## Usage
 
 ```rust
-let collection = MyCollection { items: vec![1, 2, 3] };
+let mut collection = MyCollection { items: vec![1, 2, 3] };
 
 // Explicit methods
 for x in collection.iter() { }     // Borrows
@@ -108,7 +108,9 @@ impl MyCollection<T> {
 
 ## Standard Library Examples
 
-```rust
+Method-name catalogue; each line describes a separate borrow or ownership operation.
+
+```text
 // Vec, slice, arrays
 vec.iter()      // &T
 vec.iter_mut()  // &mut T

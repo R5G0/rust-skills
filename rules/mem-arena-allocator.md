@@ -82,18 +82,23 @@ fn reset_scratch() {
 
 // Usage
 fn process_batch(items: &[Item]) -> Vec<Output> {
-    with_scratch(|arena| {
+    let result = with_scratch(|arena| {
         let temp_data: Vec<&TempData> = items
             .iter()
-            .map(|item| arena.alloc(compute_temp(item)))
+            .map(|item| {
+                let data: &TempData = arena.alloc(compute_temp(item));
+                data
+            })
             .collect();
         
         // Use temp_data...
         let result = finalize(&temp_data);
         
-        reset_scratch();  // Reuse arena memory
         result
-    })
+    });
+    // The RefCell's shared borrow must end before reset borrows it mutably.
+    reset_scratch();
+    result
 }
 ```
 
@@ -162,6 +167,26 @@ confirm the benefit in your specific use case.
 // - Arena wastes some memory (unused capacity at the end)
 // - But eliminates per-allocation metadata overhead
 // - Frees everything in O(1) with a single bump reset
+```
+
+## Verified Example
+
+<!-- verify: compile -->
+```rust
+use bumpalo::Bump;
+
+fn main() {
+    let arena = Bump::new();
+    let first = arena.alloc(10u32);
+    let second = arena.alloc(20u32);
+    let third = arena.alloc(30u32);
+    assert_eq!(*first + *second + *third, 60);
+
+    // Copy values out before the arena ends; arena references cannot escape.
+    let owned = [*first, *second, *third];
+    drop(arena);
+    assert_eq!(owned, [10, 20, 30]);
+}
 ```
 
 ## See Also

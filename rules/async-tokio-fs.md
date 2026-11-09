@@ -28,6 +28,8 @@ async fn process_files(paths: &[PathBuf]) -> Result<Vec<String>> {
 
 ```rust
 use tokio::fs;
+use std::io::Result;
+use std::path::PathBuf;
 
 async fn process_files(paths: &[PathBuf]) -> Result<Vec<String>> {
     let mut contents = Vec::new();
@@ -120,25 +122,15 @@ while let Some(line) = lines.next_line().await? {
 
 ## When std::fs is Acceptable
 
+Synchronous reads during startup, before the async runtime starts, do not block executor workers. Once inside any runtime, even a current-thread runtime, a blocking call prevents that worker from polling other tasks; prefer `tokio::fs` or a blocking pool for operations with meaningful latency.
+
 ```rust
-// Startup/initialization (before async runtime)
-fn main() {
-    let config = std::fs::read_to_string("config.toml")
-        .expect("config file required");
-    
-    tokio::runtime::Runtime::new()
-        .unwrap()
-        .block_on(run_with_config(config));
+fn main() -> std::io::Result<()> {
+    let config = std::fs::read_to_string("config.toml")?;
+    let runtime = tokio::runtime::Runtime::new()?;
+    runtime.block_on(async { assert!(!config.is_empty()); });
+    Ok(())
 }
-
-// Single-threaded current_thread runtime (less impact)
-#[tokio::main(flavor = "current_thread")]
-async fn main() {
-    // Still prefer tokio::fs, but impact is lower
-}
-
-// When file operations are rare and quick
-// (e.g., reading small config once per hour)
 ```
 
 ## Performance Considerations

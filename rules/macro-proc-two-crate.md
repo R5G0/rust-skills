@@ -123,9 +123,10 @@ pub fn derive_greet(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let name = &input.ident;
     let name_str = name.to_string();
+    let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
     quote! {
-        impl ::mycrate::Greet for #name {
+        impl #impl_generics ::mycrate::Greet for #name #ty_generics #where_clause {
             fn greet(&self) -> String {
                 ::mycrate::__private::format_greeting(#name_str)
             }
@@ -149,6 +150,11 @@ parsing/transformation logic benefits from ordinary library APIs; a third crate
 is not required for every small proc macro.
 
 Sources: [Microsoft M-MACRO-VERSION-PIN](https://microsoft.github.io/rust-guidelines/guidelines/macros/index.html#M-MACRO-VERSION-PIN), [M-PROC-IMPLIED-ITEMS](https://microsoft.github.io/rust-guidelines/guidelines/macros/index.html#M-PROC-IMPLIED-ITEMS).
+
+## Verified Project
+
+<!-- verify: fixture=proc-macros -->
+The [proc-macro fixture workspace](../checks/fixtures/proc-macros/Cargo.toml) compiles a real derive crate, facade, and separate consumer. Run `cargo test --manifest-path checks/fixtures/proc-macros/Cargo.toml --workspace --locked` to verify their crate boundaries and generated implementations.
 
 ## See Also
 

@@ -28,8 +28,9 @@ pub fn init_logging() {
 
 ## Good
 
+<!-- verify: compile -->
 ```rust
-// In a library crate: mylib/src/lib.rs
+// Library implementation: emit events without installing a subscriber.
 use tracing::info;
 
 pub fn connect(url: &str) {

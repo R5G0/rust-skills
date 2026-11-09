@@ -31,13 +31,22 @@ struct Client {
 ## Good
 
 ```rust
-#[derive(Default)]
+use std::time::Duration;
+
+pub struct Client { base_url: String, timeout: Duration, max_retries: u32, auth_token: Option<String> }
+#[derive(Debug, thiserror::Error)]
+pub enum BuilderError { #[error("missing base url")] MissingBaseUrl }
+
 #[must_use = "builders do nothing unless you call build()"]
 pub struct ClientBuilder {
     base_url: Option<String>,
     timeout: Option<Duration>,
     max_retries: u32,
     auth_token: Option<String>,
+}
+
+impl Default for ClientBuilder {
+    fn default() -> Self { Self { base_url: None, timeout: None, max_retries: 3, auth_token: None } }
 }
 
 impl ClientBuilder {
@@ -132,11 +141,14 @@ impl ClientBuilder<HasUrl> {
 }
 
 // 3. Consuming vs borrowing (consuming is more common)
-// Consuming (takes self)
-pub fn timeout(mut self, t: Duration) -> Self { ... }
-
-// Borrowing (takes &mut self, allows reuse)
-pub fn timeout(&mut self, t: Duration) -> &mut Self { ... }
+struct ConsumingOptions { timeout: Duration }
+impl ConsumingOptions {
+    pub fn timeout(mut self, t: Duration) -> Self { self.timeout = t; self }
+}
+struct BorrowingOptions { timeout: Duration }
+impl BorrowingOptions {
+    pub fn timeout(&mut self, t: Duration) -> &mut Self { self.timeout = t; self }
+}
 ```
 
 ## Evidence from reqwest
@@ -189,6 +201,31 @@ For a fallible builder, validate cross-field constraints in build and return one
 Choose required constructor parameters, typestate, or final validation according to the actual contract. Do not add a builder solely because a fixed number of options was exceeded, or change a published constructor just to match a naming preference. Put callbacks near the end where practical, while preserving established APIs that legitimately need multiple callbacks.
 
 Sources: [Microsoft M-INIT-BUILDER](https://microsoft.github.io/rust-guidelines/guidelines/libs/ux/index.html#M-INIT-BUILDER), [M-INIT-CASCADED](https://microsoft.github.io/rust-guidelines/guidelines/libs/ux/index.html#M-INIT-CASCADED), [M-BUILD-RESULT](https://microsoft.github.io/rust-guidelines/guidelines/libs/resilience/index.html#M-BUILD-RESULT), [M-PARAMETER-CONSISTENCY](https://microsoft.github.io/rust-guidelines/guidelines/libs/ux/index.html#M-PARAMETER-CONSISTENCY).
+
+## Verified Example
+
+<!-- verify: compile -->
+```rust
+use std::time::Duration;
+
+#[derive(Debug, PartialEq)]
+struct Client { base_url: String, timeout: Duration }
+#[derive(Default)]
+#[must_use = "call build to create the client"]
+struct ClientBuilder { base_url: Option<String>, timeout: Option<Duration> }
+impl ClientBuilder {
+    fn base_url(mut self, url: impl Into<String>) -> Self { self.base_url = Some(url.into()); self }
+    fn timeout(mut self, timeout: Duration) -> Self { self.timeout = Some(timeout); self }
+    fn build(self) -> Result<Client, &'static str> {
+        Ok(Client { base_url: self.base_url.ok_or("missing base url")?, timeout: self.timeout.unwrap_or(Duration::from_secs(30)) })
+    }
+}
+fn main() {
+    assert_eq!(ClientBuilder::default().build(), Err("missing base url"));
+    let client = ClientBuilder::default().base_url("https://example.com").timeout(Duration::from_secs(5)).build().unwrap();
+    assert_eq!(client.timeout, Duration::from_secs(5));
+}
+```
 
 ## See Also
 

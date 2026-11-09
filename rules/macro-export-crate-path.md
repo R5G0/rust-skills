@@ -40,10 +40,12 @@ macro_rules! greet {
     };
 }
 
-// Re-export so `use mylib::greet;` resolves through the crate's public path.
-// (The re-export is implicit when using #[macro_export]; this is just for clarity
-// or when you want to place it under a module path.)
-pub use greet;
+// #[macro_export] already exports `greet` at the crate root; do not re-import
+// it into the same macro namespace with `pub use greet`.
+#[doc(hidden)]
+pub mod __private {
+    pub fn print_greeting(name: &str) { println!("hello, {name}"); }
+}
 ```
 
 ```rust
@@ -79,6 +81,11 @@ macro_rules! greet {
 - Avoid `#[macro_use]` in new code; it is required only when supporting pre-2018 edition consumers.
 - If the macro calls internal helpers, pair `#[macro_export]` with `$crate::__private::...` paths.
 - Document macros with `///` just like any other public item.
+
+## Verified Project
+
+<!-- verify: fixture=proc-macros -->
+The [proc-macro fixture workspace](../checks/fixtures/proc-macros/Cargo.toml) compiles a real derive crate, facade, and separate consumer. Run `cargo test --manifest-path checks/fixtures/proc-macros/Cargo.toml --workspace --locked` to verify their crate boundaries and generated implementations.
 
 ## See Also
 

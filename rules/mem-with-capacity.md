@@ -119,7 +119,9 @@ fn join_with_sep(parts: &[&str], sep: &str) -> String {
 ## Evidence from Production Code
 
 From fd (file finder):
-```rust
+Illustrative excerpt with fields and parameters omitted; the runnable example below verifies reservation with complete code.
+
+```text
 // https://github.com/sharkdp/fd/blob/master/src/walk.rs
 struct ReceiverBuffer<'a, W> {
     buffer: Vec<DirEntry>,
@@ -147,6 +149,21 @@ let v: Vec<_> = iter.collect();  // collect() uses size_hint
 
 // Capacity overhead exceeds benefit
 let mut rarely_used = Vec::new();  // OK if rarely grown
+```
+
+## Verified Example
+
+<!-- verify: compile -->
+```rust
+fn double_values(values: &[u32]) -> Vec<u64> {
+    let mut output = Vec::with_capacity(values.len());
+    for value in values { output.push(u64::from(*value) * 2); }
+    output
+}
+fn main() {
+    assert_eq!(double_values(&[2, 3, 4]), [4, 6, 8]);
+    assert!(double_values(&[]).is_empty());
+}
 ```
 
 ## See Also

@@ -8,11 +8,14 @@ Not all users of your library need serialization. Making serde a required depend
 
 ## Bad
 
-```rust
-// Cargo.toml
+```toml
+# Cargo.toml
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
 
+```
+
+```rust
 // lib.rs
 use serde::{Serialize, Deserialize};
 
@@ -26,8 +29,8 @@ pub struct Config {
 
 ## Good
 
-```rust
-// Cargo.toml
+```toml
+# Cargo.toml
 [dependencies]
 serde = { version = "1.0", features = ["derive"], optional = true }
 
@@ -35,6 +38,9 @@ serde = { version = "1.0", features = ["derive"], optional = true }
 default = []
 serde = ["dep:serde"]
 
+```
+
+```rust
 // lib.rs
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Config {
@@ -110,8 +116,8 @@ pub struct Config {
 
 ## Multiple Optional Dependencies
 
-```rust
-// Cargo.toml
+```toml
+# Cargo.toml
 [dependencies]
 serde = { version = "1.0", features = ["derive"], optional = true }
 rkyv = { version = "0.7", optional = true }
@@ -123,6 +129,9 @@ serde = ["dep:serde"]
 rkyv = ["dep:rkyv"]
 borsh = ["dep:borsh"]
 
+```
+
+```rust
 // lib.rs
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -161,18 +170,18 @@ fn test_serde_roundtrip() {
 
 ## When to Make Serde Required
 
-```rust
-// ✅ Required: Library is about serialization
-// (e.g., json-schema, config-file parser)
+```toml
+# Required: Library is about serialization
+# For example: json-schema, config-file parser
 [dependencies]
 serde = "1.0"
 
-// ✅ Required: Domain heavily uses serde
-// (e.g., API client, data format library)
+# Required: Domain heavily uses serde
+# For example: API client, data format library
 
-// ❌ Optional: General-purpose utility library
-// ❌ Optional: Math/algorithm library
-// ❌ Optional: Most libraries!
+# Optional: General-purpose utility library
+# Optional: Math/algorithm library
+# Optional: Serialization is not part of the core purpose
 ```
 
 ## See Also

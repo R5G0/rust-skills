@@ -65,21 +65,19 @@ let age = user.age();
 Use `get` when the method does more than simple access:
 
 ```rust
-impl HashMap<K, V> {
-    // Returns Option - not just field access
-    fn get(&self, key: &K) -> Option<&V> { }
-    
-    // Mutable variant
-    fn get_mut(&mut self, key: &K) -> Option<&mut V> { }
-}
+use std::collections::HashMap;
 
-impl Vec<T> {
-    // Returns Option - bounds checked
-    fn get(&self, index: usize) -> Option<&T> { }
-}
+let mut map = HashMap::from([("timeout", 30)]);
+assert_eq!(map.get("timeout"), Some(&30));
+if let Some(value) = map.get_mut("timeout") { *value = 60; }
+let values = [10, 20];
+assert_eq!(values.get(1), Some(&20));
+assert_eq!(values.get(2), None);
 
+#[derive(Clone, Default)]
+struct Config { timeout: u64 }
+struct Context { configs: HashMap<String, Config>, current_env: String }
 impl Context {
-    // Does computation/lookup, not just field access
     fn get_config(&self) -> Config {
         self.configs.get(&self.current_env).cloned().unwrap_or_default()
     }
@@ -88,7 +86,9 @@ impl Context {
 
 ## Standard Library Examples
 
-```rust
+API-name catalogue; concrete receivers and required arguments are omitted.
+
+```text
 // No get_ prefix
 String::len()
 Vec::len()
@@ -147,8 +147,25 @@ impl ConfigBuilder {
 | Setter | `set_name()`, `set_value()` |
 | Builder | `name()`, `value()` (consuming self) |
 
+## Verified Example
+
+<!-- verify: compile -->
+```rust
+struct User { name: String, age: u32 }
+impl User {
+    fn name(&self) -> &str { &self.name }
+    fn age(&self) -> u32 { self.age }
+    fn is_adult(&self) -> bool { self.age >= 18 }
+}
+fn main() {
+    let user = User { name: String::from("Ada"), age: 36 };
+    assert_eq!(user.name(), "Ada");
+    assert_eq!(user.age(), 36);
+    assert!(user.is_adult());
+}
+```
+
 ## See Also
 
-- [name-is-has-bool](./name-is-has-bool.md) - Boolean naming
 - [name-is-has-bool](./name-is-has-bool.md) - Boolean naming
 - [api-builder-pattern](./api-builder-pattern.md) - Builder pattern

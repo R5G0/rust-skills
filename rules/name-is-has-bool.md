@@ -63,7 +63,9 @@ if user.is_active() && user.has_permission(Permission::Write) {
 
 ## Standard Library Examples
 
-```rust
+Method-name catalogue; the receiver names below stand for values of the corresponding types.
+
+```text
 // is_ prefix
 vec.is_empty()
 option.is_some()
@@ -76,7 +78,7 @@ path.is_file()
 path.is_dir()
 
 // has_ prefix (less common in std)
-iterator.has_next()  // conceptual
+peekable.peek().is_some()  // Inspect a Peekable iterator without consuming an item
 
 // Checking methods
 str.contains("foo")      // Not is_ because takes argument

@@ -73,38 +73,19 @@ fn use_driver(driver: &impl DatabaseDriver) {
 
 ```rust
 pub mod db {
-    mod private {
-        pub trait Sealed {}
-    }
-    
-    /// Database driver trait.
-    /// 
-    /// This trait is sealed and cannot be implemented outside this crate.
-    pub trait Driver: private::Sealed {
-        /// Connects to the database.
-        fn connect(&self, url: &str) -> Result<Connection, Error>;
-        
-        /// Executes a query.
-        fn execute(&self, sql: &str) -> Result<Rows, Error>;
-    }
-    
+    mod private { pub trait Sealed {} }
+    /// This trait can be used, but not implemented, outside this crate.
+    pub trait Driver: private::Sealed { fn engine_name(&self) -> &'static str; }
     pub struct Postgres;
     impl private::Sealed for Postgres {}
-    impl Driver for Postgres { ... }
-    
+    impl Driver for Postgres { fn engine_name(&self) -> &'static str { "postgres" } }
     pub struct Sqlite;
     impl private::Sealed for Sqlite {}
-    impl Driver for Sqlite { ... }
+    impl Driver for Sqlite { fn engine_name(&self) -> &'static str { "sqlite" } }
 }
-
-// Usage works fine
 use db::{Driver, Postgres};
-
-fn query(driver: &impl Driver) {
-    driver.execute("SELECT 1")?;
-}
-
-query(&Postgres);
+fn engine(driver: &impl Driver) -> &'static str { driver.engine_name() }
+fn main() { assert_eq!(engine(&Postgres), "postgres"); }
 ```
 
 ## Benefits of Sealing

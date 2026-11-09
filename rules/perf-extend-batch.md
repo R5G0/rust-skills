@@ -4,13 +4,13 @@
 
 ## Why It Matters
 
-`extend()` can pre-allocate capacity for the incoming elements and insert them in a single operation. Individual `push()` calls may trigger multiple reallocations as the collection grows. For adding multiple elements, `extend()` is both faster and clearer.
+`extend()` expresses batch insertion and can use iterator size information or specialization to reduce growth overhead. A loop of `push()` also reuses spare capacity. The allocation behavior and relative speed depend on the destination type, iterator, and existing capacity; measure them when performance matters.
 
 ## Bad
 
 ```rust
 // Multiple potential reallocations
-fn collect_results(sources: Vec<Source>) -> Vec<Result> {
+fn collect_results(sources: Vec<Source>) -> Vec<Output> {
     let mut results = Vec::new();
     
     for source in sources {
@@ -43,7 +43,7 @@ fn combine(mut a: Vec<i32>, b: Vec<i32>) -> Vec<i32> {
 
 ```rust
 // Single extend with size hint
-fn collect_results(sources: Vec<Source>) -> Vec<Result> {
+fn collect_results(sources: Vec<Source>) -> Vec<Output> {
     let mut results = Vec::new();
     
     for source in sources {
@@ -93,7 +93,7 @@ fn merge_all(chunks: Vec<Vec<Item>>) -> Vec<Item> {
 
 ```rust
 // Bad: multiple allocations
-fn build_message(parts: &[&str]) -> String {
+fn build_message_unreserved(parts: &[&str]) -> String {
     let mut result = String::new();
     for part in parts {
         result.push_str(part);  // May reallocate
@@ -102,7 +102,7 @@ fn build_message(parts: &[&str]) -> String {
 }
 
 // Good: extend with known parts
-fn build_message(parts: &[&str]) -> String {
+fn build_message_reserved(parts: &[&str]) -> String {
     let total_len: usize = parts.iter().map(|s| s.len()).sum();
     let mut result = String::with_capacity(total_len);
     for part in parts {
@@ -112,7 +112,7 @@ fn build_message(parts: &[&str]) -> String {
 }
 
 // Better: collect/join
-fn build_message(parts: &[&str]) -> String {
+fn build_message_concat(parts: &[&str]) -> String {
     parts.concat()  // or parts.join("")
 }
 ```
@@ -137,11 +137,17 @@ set.extend(items.iter().map(|i| i.id));
 
 | Operation | Allocations | Complexity |
 |-----------|-------------|------------|
-| N × `push()` | O(log N) | O(N) amortized |
-| `extend(iter)` | O(1)* | O(N) |
-| `with_capacity` + `extend` | 1 | O(N) |
+| N × `push()` | Depends on initial capacity and growth | O(N) amortized |
+| `extend(iter)` | Depends on capacity and iterator | O(N) |
+| `with_capacity` + `extend` | Can avoid growth within reserved capacity | O(N) |
 
-*When iterator provides accurate `size_hint()`
+An accurate size hint can help reserve capacity, but does not guarantee a fixed allocation count for arbitrary collection implementations.
+
+## Verified Project
+
+<!-- verify: fixture=performance -->
+
+See the [executable implementations, regression tests, and benchmarks](../perf-validation/README.md) for this rule and its recorded measurement limits.
 
 ## See Also
 

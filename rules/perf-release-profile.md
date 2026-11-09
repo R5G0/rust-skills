@@ -4,7 +4,7 @@
 
 ## Why It Matters
 
-The default release profile prioritizes compile speed over runtime performance. For production binaries, tuning the release profile can yield significant performance improvements (10-40% in some cases) at the cost of longer compile times.
+Cargo's release defaults are already optimized. LTO and codegen settings can change runtime performance, binary size, and build cost, but benefits depend on the workload and compiler. Measure candidate settings rather than assuming a fixed speedup.
 
 ## Default Profile
 
@@ -16,14 +16,14 @@ lto = false
 codegen-units = 16
 ```
 
-## Optimized Profile
+## Candidate Profile
 
 ```toml
 [profile.release]
 opt-level = 3          # Maximum optimization
 lto = "fat"            # Full link-time optimization
 codegen-units = 1      # Better optimization, slower compile
-panic = "abort"        # Smaller binary, no unwinding
+panic = "abort"        # Changes failure behavior: no unwinding or panic cleanup
 strip = true           # Remove symbols
 
 [profile.release.package."*"]
@@ -57,9 +57,9 @@ opt-level = 3
 
 | Option | Compile Time | Performance | Binary Size |
 |--------|--------------|-------------|-------------|
-| `false` | Fast | Baseline | Larger |
-| `"thin"` | Medium | Good | Smaller |
-| `"fat"` | Slow | Best | Smallest |
+| `false` | Baseline; local thin LTO may occur | Measure | Measure |
+| `"thin"` | Can add link work | Measure | Measure |
+| `"fat"` | Can add more link work | Measure; not necessarily best | Measure |
 
 ## Custom Profiles
 
@@ -138,9 +138,16 @@ codegen-units = 1
 
 # Override for specific package
 [profile.release.package.fast-compile-lib]
-lto = false
 codegen-units = 16
 ```
+
+`lto`, `panic`, and `rpath` cannot be set in per-package profile overrides. Set those at the profile level instead. `lto = false` permits thin local LTO in eligible builds; `lto = "off"` disables LTO.
+
+## Verified Project
+
+<!-- verify: fixture=performance -->
+
+The [formal validation project](../perf-validation/Cargo.toml) builds and executes default, thin-LTO, single-codegen-unit, and combined release profiles. It compares checksums and verifies destructor behavior during a process-level panic. Standard `cargo test --release` uses the test harness's unwind strategy and does not prove an aborting production binary's behavior. [Recorded measurements](../perf-validation/results/summary.md) are local observations, not universal speed or size rankings.
 
 ## See Also
 

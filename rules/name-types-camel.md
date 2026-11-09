@@ -20,20 +20,19 @@ struct HTTP_CLIENT { ... }  // Not idiomatic
 
 ## Good
 
+<!-- verify: compile -->
 ```rust
-// UpperCamelCase for all types
-struct HttpClient { ... }
-trait Serializable { ... }
-enum ResponseType { ... }
-
-// Compound words
-struct TcpConnection { ... }
-struct IoError { ... }
-struct FileReader { ... }
-
-// Generic types
-struct HashMap<K, V> { ... }
-struct Result<T, E> { ... }
+struct HttpClient;
+trait Serializable { fn serialize(&self) -> &'static str; }
+enum ResponseType { Json, Text }
+impl Serializable for HttpClient { fn serialize(&self) -> &'static str { "client" } }
+fn main() {
+    let client = HttpClient;
+    assert_eq!(client.serialize(), "client");
+    let response_type = ResponseType::Json;
+    assert!(matches!(response_type, ResponseType::Json));
+    let _text = ResponseType::Text;
+}
 ```
 
 ## Acronyms

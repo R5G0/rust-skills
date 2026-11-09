@@ -135,6 +135,14 @@ name = "my-tool"
 default-run = "my-tool"  # Or specify another
 ```
 
+## Verified Project
+
+<!-- verify: fixture=layouts -->
+
+See the real [validation fixture source](../checks/fixtures/layouts/flat-tool/src/bin/cli.rs). The fixture also contains src/bin/report.rs; Cargo discovers and compiles both binary targets without [[bin]] declarations.
+
+Run from `checks/fixtures/layouts` with Rust 1.97.1: `cargo test --workspace --all-targets`, `cargo test --workspace --doc`, `cargo doc --workspace --no-deps`, `cargo fmt --all --check`, and `cargo clippy --workspace --all-targets -- -D warnings`.
+
 ## See Also
 
 - [proj-lib-main-split](./proj-lib-main-split.md) - Keep main.rs minimal

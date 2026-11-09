@@ -4,7 +4,7 @@
 
 ## Why It Matters
 
-Tests often need setup and teardown—creating temp files, starting servers, setting environment variables. Using RAII (Resource Acquisition Is Initialization) with Drop ensures cleanup happens automatically, even if the test panics. This prevents test pollution and resource leaks.
+Tests often need setup and teardown, such as temporary files and local server resources. RAII (Resource Acquisition Is Initialization) ties cleanup to an owning guard. Drop runs on normal scope exit and during panic unwinding; process aborts do not run destructors. Prefer passing configuration directly or setting a child process environment instead of mutating process-global environment variables in concurrent tests.
 
 ## Bad
 
@@ -33,59 +33,56 @@ fn test_with_env_var() {
 
 ## Good
 
+<!-- verify: compile -->
 ```rust
-use tempfile::NamedTempFile;
+use std::path::Path;
 
-#[test]
-fn test_with_temp_file() {
-    // Arrange - file deleted automatically when `file` drops
-    let file = NamedTempFile::new().unwrap();
-    std::fs::write(file.path(), "test data").unwrap();
-    
-    // Act
-    let result = process_file(file.path());
-    
-    // Assert - file cleaned up even if assertion panics
-    assert!(result.is_ok());
+fn process_file(path: &Path) -> std::io::Result<String> {
+    std::fs::read_to_string(path).map(|text| text.trim().to_uppercase())
 }
 
-// Custom RAII guard for environment variables
-struct EnvGuard {
-    key: String,
-    original: Option<String>,
-}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::{NamedTempFile, TempDir};
 
-impl EnvGuard {
-    fn set(key: &str, value: &str) -> Self {
-        let original = std::env::var(key).ok();
-        // SAFETY: env::set_var is unsafe since the 2024 edition (env writes are
-        // not thread-safe); env-touching tests should run single-threaded.
-        unsafe { std::env::set_var(key, value) };
-        EnvGuard {
-            key: key.to_string(),
-            original,
+    #[test]
+    fn temporary_file_is_removed_when_its_owner_leaves_scope() {
+        let path;
+        {
+            // Arrange: the unique file owns its cleanup operation.
+            let file = NamedTempFile::new().expect("create temporary file");
+            path = file.path().to_owned();
+            std::fs::write(&path, "  test data\n").expect("write fixture");
+
+            // Act
+            let result = process_file(&path).expect("process fixture");
+
+            // Assert
+            assert_eq!(result, "TEST DATA");
+            assert!(path.exists());
         }
+        assert!(!path.exists());
+    }
+
+    #[test]
+    fn temporary_directory_is_removed_during_panic_unwinding() {
+        let path;
+        let outcome;
+        {
+            let directory = TempDir::new().expect("create temporary directory");
+            path = directory.path().to_owned();
+            std::fs::write(path.join("data.txt"), "fixture").expect("write fixture");
+            outcome = std::panic::catch_unwind(move || {
+                // Moving the guard into the unwinding scope ensures Drop runs.
+                let _directory = directory;
+                panic!("injected failure after setup");
+            });
+        }
+        assert!(outcome.is_err());
+        assert!(!path.exists());
     }
 }
-
-impl Drop for EnvGuard {
-    fn drop(&mut self) {
-        // SAFETY: see EnvGuard::set — restored on the same single-threaded test
-        match &self.original {
-            Some(v) => unsafe { std::env::set_var(&self.key, v) },
-            None => unsafe { std::env::remove_var(&self.key) },
-        }
-    }
-}
-
-#[test]
-fn test_with_env_var() {
-    let _guard = EnvGuard::set("MY_VAR", "test_value");
-    
-    let result = read_config();
-    
-    assert!(result.is_ok());
-}  // MY_VAR automatically restored
 ```
 
 ## Common RAII Patterns

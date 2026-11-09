@@ -30,23 +30,19 @@ fn get_validators() -> Vec<Box<dyn Validator>> {
 
 ## Good
 
+<!-- verify: compile -->
 ```rust
-// impl Trait - zero overhead, inlined
 fn get_iterator() -> impl Iterator<Item = i32> {
-    (0..10).map(|x| x * 2)
+    (0..10).map(|value| value * 2)
 }
 
-// impl Fn - no boxing
 fn make_handler() -> impl Fn(i32) -> i32 {
-    |x| x + 1
+    |value| value + 1
 }
 
-// When mixed types are genuinely needed, Box is OK
-fn get_validators() -> Vec<Box<dyn Validator>> {
-    // Actually different types at runtime - Box is appropriate
-    config.validators.iter()
-        .map(|v| v.create_validator())
-        .collect()
+fn main() {
+    assert_eq!(get_iterator().sum::<i32>(), 90);
+    assert_eq!(make_handler()(41), 42);
 }
 ```
 
@@ -93,18 +89,22 @@ struct EventLoop {
 ## impl Trait Positions
 
 ```rust
-// Return position - caller doesn't need to know concrete type
-fn process() -> impl Future<Output = Result> { }
+use std::fmt::Display;
+use std::future::Future;
 
-// Argument position - like generics but simpler
-fn handle(handler: impl Handler) { }
+fn process() -> impl Future<Output = Result<u32, &'static str>> {
+    async { Ok(42) }
+}
 
-// Return-position impl Trait in traits (RPITIT) is stable since Rust 1.75
+trait Handler { fn handle(&self, value: u32) -> u32; }
+
+fn handle(handler: impl Handler) -> u32 {
+    handler.handle(41)
+}
+
+// Return-position impl Trait in traits is stable since Rust 1.75.
 trait Processor {
-    // Use impl Trait when callers don't need to name the return type:
-    fn process(&self) -> impl Display;  // stable, idiomatic (Rust 1.75+)
-
-    // Use an associated type when callers need to name or constrain the type:
+    fn process(&self) -> impl Display;
     type Output: Display;
     fn process_named(&self) -> Self::Output;
 }

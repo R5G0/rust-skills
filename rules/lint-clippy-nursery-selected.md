@@ -31,25 +31,26 @@ redundant_else = "warn"
 or_fun_call = "warn"
 ```
 
+<!-- verify: compile -->
 ```rust
-// significant_drop_tightening example — lint fires here:
-fn process(state: &Mutex<Vec<u32>>) -> usize {
-    let guard = state.lock().unwrap();
-    let len = guard.len();
-    drop(guard);          // lint suggests dropping earlier, before the return
-    expensive_work();
-    len
+use std::sync::Mutex;
+
+// Keep the guard in a small scope before invoking unrelated work.
+fn process(state: &Mutex<Vec<u32>>, after_read: impl FnOnce()) -> Result<usize, String> {
+    let len = {
+        let guard = state.lock().map_err(|error| error.to_string())?;
+        guard.len()
+    };
+    after_read();
+    Ok(len)
 }
 
-// use_self example — lint fires here:
-impl MyStruct {
-    fn new() -> MyStruct {   // should be -> Self
-        MyStruct { value: 0 }
-    }
+struct Counter {
+    value: u32,
 }
 
-// Correct:
-impl MyStruct {
+impl Counter {
+    // use_self accepts Self in the return type and construction expression.
     fn new() -> Self {
         Self { value: 0 }
     }
@@ -67,6 +68,14 @@ impl MyStruct {
 | `or_fun_call` | `or(Default::default())` → `or_default()` |
 
 Start with this set. Add more only after reviewing what they flag in your codebase.
+
+## Verified Project
+
+<!-- verify: fixture=layouts -->
+
+See the real [validation fixture source](../checks/fixtures/layouts/Cargo.toml). workspace.lints.clippy selects use_self, redundant_clone, and or_fun_call individually; member manifests inherit them. The gate runs Clippy on all targets.
+
+Run from `checks/fixtures/layouts` with Rust 1.97.1: `cargo test --workspace --all-targets`, `cargo test --workspace --doc`, `cargo doc --workspace --no-deps`, `cargo fmt --all --check`, and `cargo clippy --workspace --all-targets -- -D warnings`.
 
 ## See Also
 

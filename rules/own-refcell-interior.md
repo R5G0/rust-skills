@@ -33,27 +33,26 @@ This forces exclusive access even for logically shared operations.
 use std::cell::RefCell;
 use std::collections::HashMap;
 
-struct Cache {
-    data: RefCell<HashMap<String, String>>,
-}
+#[derive(Default)]
+struct Cache { data: RefCell<HashMap<String, String>> }
 
 impl Cache {
+    fn new() -> Self { Self::default() }
+
     fn get_or_compute(&self, key: &str) -> String {
-        // Can mutate through &self
         let mut data = self.data.borrow_mut();
-        if !data.contains_key(key) {
-            data.insert(key.to_string(), expensive_compute(key));
-        }
-        data[key].clone()
+        data.entry(key.to_owned()).or_insert_with(|| key.to_uppercase()).clone()
     }
 }
 
-// Multiple references can coexist
-let cache = Cache::new();
-let ref1 = &cache;
-let ref2 = &cache;
-ref1.get_or_compute("key1");
-ref2.get_or_compute("key2");
+fn main() {
+    let cache = Cache::new();
+    let first = &cache;
+    let second = &cache;
+    assert_eq!(first.get_or_compute("hello"), "HELLO");
+    assert_eq!(second.get_or_compute("hello"), "HELLO");
+    assert_eq!(cache.data.borrow().len(), 1);
+}
 ```
 
 ## Common Pattern: Rc<RefCell<T>>

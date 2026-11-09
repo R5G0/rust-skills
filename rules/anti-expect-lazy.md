@@ -26,22 +26,21 @@ let user = db.find_user(id).await.expect("user not found");
 
 ## Good
 
+<!-- verify: compile -->
 ```rust
-// Handle recoverable errors properly
-let response = client.get(url).await
-    .context("failed to fetch URL")?;
+use std::num::ParseIntError;
 
-// Return error if file doesn't exist
-let config = fs::read_to_string("config.toml")
-    .context("failed to read config file")?;
+fn parse_age(input: &str) -> Result<u32, ParseIntError> {
+    input.parse()
+}
 
-// Validate and return error
-let age: u32 = input.parse()
-    .map_err(|_| Error::InvalidInput("age must be a number"))?;
-
-// Handle missing data
-let user = db.find_user(id).await?
-    .ok_or(Error::NotFound("user"))?;
+fn main() {
+    assert_eq!(parse_age("42"), Ok(42));
+    // Invalid user input is recoverable; the caller chooses the fallback.
+    assert!(parse_age("unknown").is_err());
+    let age = parse_age("unknown").unwrap_or(0);
+    assert_eq!(age, 0);
+}
 ```
 
 ## When expect() Is Appropriate
@@ -56,7 +55,7 @@ let guard = mutex.lock().expect("mutex poisoned");
 let re = Regex::new(r"^\d{4}$").expect("invalid regex");
 
 // Thread spawn failure is unrecoverable
-let handle = thread::spawn(|| work()).expect("failed to spawn thread");
+let handle = thread::Builder::new().spawn(|| work()).expect("failed to spawn thread");
 
 // Static data that must be valid
 let config: Config = toml::from_str(EMBEDDED_CONFIG)

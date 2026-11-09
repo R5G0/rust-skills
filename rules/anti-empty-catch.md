@@ -34,34 +34,26 @@ for item in items {
 
 ## Good
 
+<!-- verify: compile -->
 ```rust
-// Log the error
-if let Err(e) = write_to_file(data) {
-    error!("failed to write file: {}", e);
+fn parse_batch(inputs: &[&str]) -> (Vec<u32>, Vec<String>) {
+    let mut values = Vec::new();
+    let mut errors = Vec::new();
+    for input in inputs {
+        match input.parse::<u32>() {
+            Ok(value) => values.push(value),
+            Err(error) => errors.push(format!("invalid input {input:?}: {error}")),
+        }
+    }
+    (values, errors)
 }
 
-// Propagate if possible
-send_notification()?;
-
-// Or handle explicitly
-match send_notification() {
-    Ok(_) => info!("notification sent"),
-    Err(e) => warn!("notification failed: {}", e),
+fn main() {
+    let (values, errors) = parse_batch(&["1", "invalid", "3"]);
+    assert_eq!(values, [1, 3]);
+    assert_eq!(errors.len(), 1);
+    assert!(errors[0].contains("invalid"));
 }
-
-// Collect errors in batch operations
-let (successes, failures): (Vec<_>, Vec<_>) = items
-    .into_iter()
-    .map(process)
-    .partition(Result::is_ok);
-
-if !failures.is_empty() {
-    warn!("{} items failed to process", failures.len());
-}
-
-// Explicit documentation when ignoring
-// Intentionally ignored: cleanup failure is not critical
-let _ = cleanup_temp_file();  // Add comment explaining why
 ```
 
 ## Acceptable Ignoring (Documented)

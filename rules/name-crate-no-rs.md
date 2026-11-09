@@ -71,6 +71,11 @@ name = "better-json"         # Instead of json-rust
 name = "my-serde-impl"       # Instead of serde-rs-fork
 ```
 
+## Verified Project
+
+<!-- verify: fixture=proc-macros -->
+The [proc-macro fixture workspace](../checks/fixtures/proc-macros/Cargo.toml) compiles a real derive crate, facade, and separate consumer. Run `cargo test --manifest-path checks/fixtures/proc-macros/Cargo.toml --workspace --locked` to verify their crate boundaries and generated implementations.
+
 ## See Also
 
 - [proj-workspace-deps](./proj-workspace-deps.md) - Cargo configuration

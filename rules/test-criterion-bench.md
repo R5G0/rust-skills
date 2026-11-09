@@ -22,7 +22,8 @@ harness = false
 
 ```rust
 // benches/my_benchmark.rs
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use std::hint::black_box;
+use criterion::{criterion_group, criterion_main, Criterion};
 
 fn fibonacci(n: u64) -> u64 {
     match n {
@@ -45,15 +46,51 @@ criterion_main!(benches);
 ## black_box is Critical
 
 ```rust
-// BAD: Compiler may optimize away the computation
-b.iter(|| fibonacci(20));  // Result unused, might be eliminated
+// BAD: Constant input and an explicitly discarded result
+b.iter(|| { let _ = fibonacci(20); });
 
-// GOOD: black_box prevents optimization
+// GOOD: Hide the input; Criterion consumes the returned result
 b.iter(|| fibonacci(black_box(20)));
 
-// Also wrap the result if needed
+// An explicit output barrier is also possible
 b.iter(|| black_box(fibonacci(black_box(20))));
 ```
+
+Returning a value from `b.iter` already lets Criterion consume it. An explicit
+discard inside the closure is different. `std::hint::black_box` is a best-effort
+optimization barrier; it does not verify the result or guarantee a valid workload.
+
+## Reset Inputs and Define the Timed Work
+
+Validate expected results outside the timed loop, and benchmark the same logical
+operation for each implementation. For consumed or mutated inputs, reset the
+fixture before every iteration; repeatedly sorting an already sorted vector or
+draining an empty buffer changes the workload.
+
+<!-- verify: compile -->
+```rust
+use std::hint::black_box;
+use criterion::{BatchSize, Criterion};
+
+fn bench_sort(c: &mut Criterion) {
+    let input: Vec<i32> = (0..1000).rev().collect();
+    c.bench_function("sort-unsorted", |b| {
+        b.iter_batched(
+            || input.clone(), // setup: excluded from the measured sorting operation
+            |mut values| {
+                values.sort_unstable();
+                black_box(values)
+            },
+            BatchSize::SmallInput,
+        );
+    });
+}
+```
+
+Use `iter_batched_ref` when retaining ownership of the prepared fixture is useful.
+Include allocation, preparation, cleanup, or I/O in timing only when those costs
+are part of the question being measured, and give both implementations the same
+boundary. Consume lazy results and verify the intended success or error path.
 
 ## Comparing Implementations
 
@@ -135,14 +172,19 @@ fn bench_parse(c: &mut Criterion) {
 cargo bench
 
 # Run specific benchmark
-cargo bench -- fib
+cargo bench --bench my_benchmark -- fib
 
-# Save baseline for comparison
-cargo bench -- --save-baseline main
+# On the original implementation, save a named baseline
+cargo bench --bench my_benchmark -- --save-baseline before
 
-# Compare against baseline
-cargo bench -- --baseline main
+# After the change, compare with that data in the same target directory
+cargo bench --bench my_benchmark -- --baseline before
 ```
+
+Keep the saved baseline artifacts between runs and record the source revision,
+toolchain, CPU, profile, features, and workload. Do not overwrite `before` with
+candidate results. Compare repeated samples and uncertainty estimates; ordinary
+unit tests should not assert wall-clock speed ratios on shared runners.
 
 ## Evidence from tokio
 

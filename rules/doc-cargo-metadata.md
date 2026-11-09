@@ -140,6 +140,14 @@ cargo package --list
 cargo publish --dry-run
 ```
 
+## Verified Project
+
+<!-- verify: fixture=layouts -->
+
+See the real [validation fixture source](../checks/fixtures/layouts/flat-tool/Cargo.toml). The fixture package includes real description, license, repository, readme, keyword, category, and rust-version metadata. Cargo parses this manifest while checking the workspace.
+
+Run from `checks/fixtures/layouts` with Rust 1.97.1: `cargo test --workspace --all-targets`, `cargo test --workspace --doc`, `cargo doc --workspace --no-deps`, `cargo fmt --all --check`, and `cargo clippy --workspace --all-targets -- -D warnings`.
+
 ## See Also
 
 - [doc-module-inner](./doc-module-inner.md) - Crate-level documentation

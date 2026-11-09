@@ -46,6 +46,14 @@ warnings = "deny"
 - Prefer a checked-in `.cargo/config.toml` (or a CI `--config 'build.warnings="deny"'` override) over a global `RUSTFLAGS` export.
 - On older Cargo versions, `cargo clippy -- -D warnings` remains a supported fallback. Do not raise a project's MSRV solely to change warning policy.
 
+## Verified Project
+
+<!-- verify: fixture=layouts -->
+
+See the real [validation fixture source](../checks/fixtures/layouts/.cargo/config.toml). The fixture sets build.warnings = "deny". Its checks run from this directory so Cargo actually discovers that configuration; both rustc and Clippy commands must finish without emitted warnings.
+
+Run from `checks/fixtures/layouts` with Rust 1.97.1: `cargo test --workspace --all-targets`, `cargo test --workspace --doc`, `cargo doc --workspace --no-deps`, `cargo fmt --all --check`, and `cargo clippy --workspace --all-targets -- -D warnings`.
+
 ## See Also
 
 - [lint-workspace-lints](lint-workspace-lints.md) - configure rustc and Clippy lints in Cargo.toml

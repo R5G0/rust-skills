@@ -1,0 +1,4 @@
+/target/
+/results/artifacts/
+__pycache__/
+proptest-regressions/

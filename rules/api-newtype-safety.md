@@ -43,14 +43,15 @@ struct User {
     created_at: Timestamp,
 }
 
-fn add_user_to_group(user_id: UserId, group_id: GroupId) { ... }
+fn add_user_to_group(user_id: UserId, group_id: GroupId) -> (UserId, GroupId) { (user_id, group_id) }
 
 // Compile error: expected UserId, found GroupId
-let user = User { ... };
-add_user_to_group(user.group_id, user.id);  // Error!
+let user = User { id: UserId(100), group_id: GroupId(5), created_at: Timestamp(1_234_567_890) };
+// add_user_to_group(user.group_id, user.id);  // Error!
 
 // Compile error: expected UserId, found Timestamp
-add_user_to_group(user.created_at, user.group_id);  // Error!
+// add_user_to_group(user.created_at, user.group_id);  // Error!
+assert_eq!(add_user_to_group(user.id, user.group_id), (UserId(100), GroupId(5)));
 ```
 
 ## Derive Common Traits
@@ -79,7 +80,7 @@ struct ProductId(u64);
 ## Constructor Patterns
 
 ```rust
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct Email(String);
 
 impl Email {
@@ -118,10 +119,10 @@ assert_eq!(size_of::<Miles>(), size_of::<f64>());
 assert_eq!(size_of::<Kilometers>(), size_of::<f64>());
 
 // But can't accidentally mix them
-fn drive(distance: Miles) { ... }
+fn drive(distance: Miles) -> f64 { distance.0 }
 
 let km = Kilometers(100.0);
-drive(km);  // Error: expected Miles, found Kilometers
+// drive(km);  // Error: expected Miles, found Kilometers
 
 // Explicit conversion
 impl From<Kilometers> for Miles {
@@ -153,6 +154,23 @@ struct Seconds(u64);
 
 // ❌ Overkill: single use, no confusion possible
 struct X(i32);  // Just use i32
+```
+
+## Verified Example
+
+<!-- verify: compile -->
+```rust
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct UserId(u64);
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct GroupId(u64);
+fn membership(user: UserId, group: GroupId) -> (UserId, GroupId) { (user, group) }
+fn main() {
+    let user = UserId(100);
+    let group = GroupId(5);
+    assert_eq!(membership(user, group), (UserId(100), GroupId(5)));
+    // membership(group, user) does not type-check: the ID types differ.
+}
 ```
 
 ## See Also

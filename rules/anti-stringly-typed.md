@@ -34,54 +34,45 @@ process_order("high", "pending");   // Swapped arguments - compiles!
 
 ```rust
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum OrderStatus {
-    Pending,
-    Processing,
-    Completed,
-    Cancelled,
-}
+enum OrderStatus { Pending, Processing, Completed, Cancelled }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-enum Priority {
-    Low,
-    Medium,
-    High,
-    Critical,
-}
+enum Priority { Low, Medium, High, Critical }
 
-fn process_order(status: OrderStatus, priority: Priority) {
+fn process_order(status: OrderStatus, priority: Priority) -> &'static str {
     match status {
-        OrderStatus::Pending => { ... }
-        OrderStatus::Processing => { ... }
-        OrderStatus::Completed => { ... }
-        OrderStatus::Cancelled => { ... }
-    }  // Exhaustive - compiler checks all cases
-}
-
-// Validated newtypes
-struct Email(String);
-struct PhoneNumber(String);
-struct UserId(u64);
-
-impl Email {
-    pub fn new(s: &str) -> Result<Self, ValidationError> {
-        if is_valid_email(s) {
-            Ok(Email(s.to_string()))
-        } else {
-            Err(ValidationError::InvalidEmail)
-        }
+        OrderStatus::Pending if priority >= Priority::High => "expedite",
+        OrderStatus::Pending => "queue",
+        OrderStatus::Processing => "continue",
+        OrderStatus::Completed => "archive",
+        OrderStatus::Cancelled => "discard",
     }
 }
 
-struct User {
-    email: Email,       // Must be valid email
-    phone: PhoneNumber, // Must be valid phone
-    user_id: UserId,    // Can't confuse with other IDs
+struct UserId(std::num::NonZeroU64);
+
+impl UserId {
+    fn new(value: u64) -> Option<Self> {
+        std::num::NonZeroU64::new(value).map(Self)
+    }
 }
 
-// Compile errors catch mistakes
-process_order(OrderStatus::Completed, Priority::High);  // Clear and correct
-process_order(Priority::High, OrderStatus::Pending);    // Compile error!
+fn main() {
+    assert_eq!(process_order(OrderStatus::Completed, Priority::High), "archive");
+    assert!(UserId::new(0).is_none());
+    assert_eq!(UserId::new(7).expect("nonzero ID").0.get(), 7);
+}
+```
+
+Swapping the domain types is a compile-time error:
+
+```rust,compile_fail
+enum OrderStatus { Pending }
+enum Priority { High }
+fn process_order(_: OrderStatus, _: Priority) {}
+fn main() {
+    process_order(Priority::High, OrderStatus::Pending);
+}
 ```
 
 ## Parsing Strings to Types

@@ -47,6 +47,7 @@ impl std::error::Error for MyError {
 
 ## Good
 
+<!-- verify: compile -->
 ```rust
 use thiserror::Error;
 
@@ -54,35 +55,26 @@ use thiserror::Error;
 pub enum ParseError {
     #[error("invalid syntax at line {line}: {message}")]
     Syntax { line: usize, message: String },
-    
-    #[error("unexpected end of file")]
+    #[error("unexpected end of input")]
     UnexpectedEof,
-    
     #[error("invalid utf-8 encoding")]
     Utf8(#[from] std::str::Utf8Error),
-    
-    #[error("io error reading input")]
-    Io(#[from] std::io::Error),
 }
 
-// Usage
-fn parse(input: &str) -> Result<Ast, ParseError> {
+fn parse_assignment(input: &str) -> Result<(&str, &str), ParseError> {
     if input.is_empty() {
         return Err(ParseError::UnexpectedEof);
     }
-    // ...
+    input.split_once('=').ok_or_else(|| ParseError::Syntax {
+        line: 1,
+        message: "expected '='".into(),
+    })
 }
 
-// Users can match specific errors
-match parse(input) {
-    Ok(ast) => process(ast),
-    Err(ParseError::Syntax { line, message }) => {
-        eprintln!("Syntax error on line {}: {}", line, message);
-    }
-    Err(ParseError::UnexpectedEof) => {
-        eprintln!("File ended unexpectedly");
-    }
-    Err(e) => eprintln!("Error: {}", e),
+fn main() {
+    assert_eq!(parse_assignment("key=value").expect("valid assignment"), ("key", "value"));
+    assert!(matches!(parse_assignment(""), Err(ParseError::UnexpectedEof)));
+    assert!(matches!(parse_assignment("invalid"), Err(ParseError::Syntax { line: 1, .. })));
 }
 ```
 

@@ -4,7 +4,7 @@
 
 ## Why It Matters
 
-Intra-doc links (`[`TypeName`]`) create clickable references in generated documentation. They enable navigation between related items, verify that referenced items exist at compile time, and update automatically when items are renamed. Plain text references become stale and unclickable.
+Rustdoc intra-doc links create clickable references between documented items. They resolve when documentation is built, so enabling broken-link warnings catches stale paths after a rename or move. Plain text references provide neither navigation nor link checking.
 
 ## Bad
 
@@ -21,21 +21,19 @@ pub fn parse(input: &str) -> ParseResult {
 
 ## Good
 
+<!-- verify: compile -->
 ```rust
-/// Parses input and returns a [`ParseResult`].
+/// Configuration accepted by [`run`].
+pub struct Config {
+    /// Name to greet.
+    pub name: String,
+}
+
+/// Produce a greeting from a [`Config`].
 ///
-/// # Errors
-///
-/// Returns [`ParseError::InvalidSyntax`] if the input contains invalid tokens.
-/// Returns [`ParseError::UnexpectedEof`] if the input ends prematurely.
-///
-/// # Related
-///
-/// - [`Tokenizer`] - The underlying tokenizer used by this parser
-/// - [`parse_file`] - Convenience function for parsing files
-/// - [`ParseOptions`] - Configuration options for parsing
-pub fn parse(input: &str) -> ParseResult {
-    // All links are clickable and verified
+/// Use [`String::as_str`] to borrow the resulting text.
+pub fn run(config: Config) -> String {
+    format!("Hello, {}!", config.name)
 }
 ```
 
@@ -106,16 +104,29 @@ impl Config {
 ```rust
 /// Implements [`Iterator`] for lazy evaluation.
 ///
-/// The [`Iterator::next`] method advances the cursor.
-/// 
-/// For parallel iteration, see [`rayon::ParallelIterator`].
-pub struct MyIterator { ... }
+/// [`Iterator::next`] advances the cursor; [`Iterator::nth`] skips values.
+/// For parallel iteration, see [`rayon::iter::ParallelIterator`].
+pub struct MyIterator {
+    remaining: std::ops::Range<u32>,
+}
+
+impl MyIterator {
+    pub fn new(range: std::ops::Range<u32>) -> Self {
+        Self { remaining: range }
+    }
+}
 
 impl Iterator for MyIterator {
-    /// Advances and returns the next value.
-    ///
-    /// See also [`Iterator::nth`] for skipping elements.
-    fn next(&mut self) -> Option<Self::Item> { ... }
+    type Item = u32;
+
+    /// Advance the cursor; see [`Iterator::nth`] for skipping elements.
+    fn next(&mut self) -> Option<Self::Item> {
+        self.remaining.next()
+    }
+}
+
+fn main() {
+    assert_eq!(MyIterator::new(1..4).collect::<Vec<_>>(), vec![1, 2, 3]);
 }
 ```
 
@@ -161,6 +172,14 @@ pub struct Parser { ... }
 pub enum Token { ... }
 pub struct Ast { ... }
 ```
+
+## Verified Project
+
+<!-- verify: fixture=layouts -->
+
+See the real [validation fixture source](../checks/fixtures/layouts/flat-tool/src/lib.rs). The crate documentation links Config, run, parse_port, str::parse, and ParseIntError. cargo doc --workspace --no-deps resolves the links with broken_intra_doc_links denied.
+
+Run from `checks/fixtures/layouts` with Rust 1.97.1: `cargo test --workspace --all-targets`, `cargo test --workspace --doc`, `cargo doc --workspace --no-deps`, `cargo fmt --all --check`, and `cargo clippy --workspace --all-targets -- -D warnings`.
 
 ## See Also
 

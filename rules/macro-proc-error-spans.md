@@ -57,7 +57,7 @@ pub fn derive_my_trait(input: TokenStream) -> TokenStream {
 }
 
 fn derive_my_trait_inner(input: TokenStream) -> Result<TokenStream, Error> {
-    let input = parse_macro_input!(input as DeriveInput);
+    let input: DeriveInput = syn::parse(input)?;
 
     let fields = match &input.data {
         Data::Struct(s) => &s.fields,
@@ -85,8 +85,9 @@ fn derive_my_trait_inner(input: TokenStream) -> Result<TokenStream, Error> {
     })?;
 
     let struct_name = &input.ident;
+    let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
     Ok(quote! {
-        impl MyTrait for #struct_name {
+        impl #impl_generics MyTrait for #struct_name #ty_generics #where_clause {
             fn first_field_name() -> &'static str {
                 stringify!(#field_name)
             }
@@ -111,6 +112,11 @@ error: MyTrait requires named fields
 - Use `Error::new(span, "message")` when you only have a `Span`, not a token.
 - Combine multiple errors with `Error::combine` rather than returning early, so the user sees all problems at once.
 - Error messages: lowercase, no trailing punctuation (consistent with Rust compiler style).
+
+## Verified Project
+
+<!-- verify: fixture=proc-macros -->
+The [proc-macro fixture workspace](../checks/fixtures/proc-macros/Cargo.toml) compiles a real derive crate, facade, and separate consumer. Run `cargo test --manifest-path checks/fixtures/proc-macros/Cargo.toml --workspace --locked` to verify their crate boundaries and generated implementations. The companion `python checks/fixtures/proc-macros/verify_diagnostics.py` compiles invalid enum, union, unit, and tuple inputs and checks the exact diagnostic and primary source span.
 
 ## See Also
 

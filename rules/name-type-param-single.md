@@ -73,16 +73,40 @@ struct Query<Db, Row, Err> { ... }
 ## Trait Bounds
 
 ```rust
-// Keep type params short, move complexity to where clause
+use std::error::Error;
+use std::fmt::Debug;
+use std::io::Error as IoError;
+
 fn process<T, E>(value: T) -> Result<T, E>
 where
     T: Clone + Debug + Send + Sync,
     E: Error + From<IoError>,
-{ ... }
+{
+    println!("{value:?}");
+    Ok(value)
+}
 
-// Not inline
-fn process<T: Clone + Debug + Send + Sync, E: Error + From<IoError>>(value: T) -> Result<T, E>
-// Too long!
+// The same bounds inline are valid, but harder to scan.
+fn process_inline<T: Clone + Debug + Send + Sync, E: Error + From<IoError>>(value: T) -> Result<T, E> {
+    Ok(value)
+}
+```
+
+## Verified Example
+
+<!-- verify: compile -->
+```rust
+use std::collections::HashMap;
+
+struct Container<T> { items: Vec<T> }
+fn transform<I, O, F>(input: I, convert: F) -> O where F: FnOnce(I) -> O { convert(input) }
+fn lookup<'a, K, V>(map: &'a HashMap<K, V>, key: &K) -> Option<&'a V>
+where K: std::hash::Hash + Eq { map.get(key) }
+fn main() {
+    let container = Container { items: vec![3] };
+    assert_eq!(transform(container.items[0], i64::from), 3i64);
+    assert_eq!(lookup(&HashMap::from([("key", 42)]), &"key"), Some(&42));
+}
 ```
 
 ## See Also

@@ -51,7 +51,7 @@ fn set_status(status: Status) {
 
 // Can only pass valid values
 set_status(Status::Pending);  // OK
-set_status(Status::Aktivev);  // Compile error - typo caught!
+// set_status(Status::Aktivev);  // Compile error - typo caught!
 
 // Configuration with typed builder
 struct Config {

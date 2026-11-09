@@ -24,28 +24,24 @@ pub struct Widget {
 
 ## Good
 
+<!-- verify: compile -->
 ```rust
-/// Parses a string into a Foo.
+/// Parse a port number.
+///
+/// # Errors
+///
+/// Returns [`std::num::ParseIntError`] for non-numeric or out-of-range input.
 ///
 /// # Examples
 ///
 /// ```
-/// use my_crate::parse;
-///
-/// let foo = parse("hello").unwrap();
-/// assert_eq!(foo.name(), "hello");
+/// # use layout_flat_tool::parse_port;
+/// let port = parse_port("8080")?;
+/// assert_eq!(port, 8080);
+/// # Ok::<(), std::num::ParseIntError>(())
 /// ```
-///
-/// Handles empty strings:
-///
-/// ```
-/// use my_crate::parse;
-///
-/// let foo = parse("").unwrap();
-/// assert!(foo.is_empty());
-/// ```
-pub fn parse(s: &str) -> Result<Foo, Error> {
-    // ...
+pub fn parse_port(input: &str) -> Result<u16, std::num::ParseIntError> {
+    input.parse()
 }
 ```
 
@@ -153,6 +149,14 @@ cargo test --doc
 # Run doc tests for specific item
 cargo test --doc my_function
 ```
+
+## Verified Project
+
+<!-- verify: fixture=layouts -->
+
+See the real [validation fixture source](../checks/fixtures/layouts/flat-tool/src/lib.rs). The parse_port examples include a success assertion and an invalid-input assertion. cargo test --doc compiles and runs both rendered documentation examples.
+
+Run from `checks/fixtures/layouts` with Rust 1.97.1: `cargo test --workspace --all-targets`, `cargo test --workspace --doc`, `cargo doc --workspace --no-deps`, `cargo fmt --all --check`, and `cargo clippy --workspace --all-targets -- -D warnings`.
 
 ## See Also
 

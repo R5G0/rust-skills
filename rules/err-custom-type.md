@@ -34,48 +34,38 @@ match validate_user(&user) {
 
 ## Good
 
+<!-- verify: compile -->
 ```rust
 use thiserror::Error;
 
-#[derive(Error, Debug)]
-pub enum ValidationError {
+#[derive(Debug, Error, PartialEq, Eq)]
+enum ValidationError {
     #[error("name cannot be empty")]
     EmptyName,
-    
-    #[error("name exceeds maximum length of {max} characters")]
+    #[error("name contains {actual} characters; maximum is {max}")]
     NameTooLong { max: usize, actual: usize },
-    
-    #[error("invalid age {0}: must be between 0 and 150")]
+    #[error("invalid age {0}: maximum is 150")]
     InvalidAge(u8),
-    
-    #[error("email format is invalid: {0}")]
-    InvalidEmail(String),
 }
 
-fn validate_user(user: &User) -> Result<(), ValidationError> {
-    if user.name.is_empty() {
+fn validate_user(name: &str, age: u8) -> Result<(), ValidationError> {
+    if name.is_empty() {
         return Err(ValidationError::EmptyName);
     }
-    if user.name.len() > 100 {
-        return Err(ValidationError::NameTooLong { 
-            max: 100, 
-            actual: user.name.len() 
-        });
+    let actual = name.chars().count();
+    if actual > 100 {
+        return Err(ValidationError::NameTooLong { max: 100, actual });
     }
-    if user.age > 150 {
-        return Err(ValidationError::InvalidAge(user.age));
+    if age > 150 {
+        return Err(ValidationError::InvalidAge(age));
     }
     Ok(())
 }
 
-// Caller can match specifically
-match validate_user(&user) {
-    Ok(()) => save(user),
-    Err(ValidationError::EmptyName) => prompt_for_name(),
-    Err(ValidationError::InvalidAge(age)) => {
-        show_error(&format!("Please enter a valid age (you entered {})", age))
-    }
-    Err(e) => show_error(&e.to_string()),
+fn main() {
+    assert_eq!(validate_user("Alice", 42), Ok(()));
+    assert_eq!(validate_user("", 42), Err(ValidationError::EmptyName));
+    assert_eq!(validate_user("Alice", 151), Err(ValidationError::InvalidAge(151)));
 }
 ```
 

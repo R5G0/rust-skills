@@ -62,6 +62,12 @@ pub fn build_internal_nodes(nodes: &[(u32, String)]) -> FxHashMap<u32, String> {
 - Changing a public concrete map type can affect callers. Do not assume a replacement is API-compatible merely because common methods look similar.
 - Independently bound input size and work where overload matters; randomized hashing is not a complete denial-of-service defense.
 
+## Verified Project
+
+<!-- verify: fixture=performance -->
+
+See the [executable implementations, regression tests, and benchmarks](../perf-validation/README.md) for this rule and its recorded measurement limits.
+
 ## See Also
 
 - [perf-entry-api](perf-entry-api.md) - avoid repeated lookups

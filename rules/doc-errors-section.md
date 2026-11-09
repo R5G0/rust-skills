@@ -24,30 +24,18 @@ pub async fn connect(url: &str) -> Result<Connection, DbError> {
 
 ## Good
 
+<!-- verify: compile -->
 ```rust
-/// Opens a file and reads its contents as a UTF-8 string.
-///
-/// # Errors
-///
-/// Returns an error if:
-/// - The file does not exist ([`Error::NotFound`])
-/// - The process lacks permission to read the file ([`Error::PermissionDenied`])
-/// - The file contains invalid UTF-8 ([`Error::InvalidUtf8`])
-pub fn read_file(path: &Path) -> Result<String, Error> {
-    // ...
-}
+use std::path::Path;
 
-/// Establishes a connection to the database.
+/// Read a file as UTF-8 text.
 ///
 /// # Errors
 ///
-/// This function will return an error if:
-/// - The URL is malformed ([`DbError::InvalidUrl`])
-/// - The database server is unreachable ([`DbError::ConnectionFailed`])
-/// - Authentication fails ([`DbError::AuthenticationFailed`])
-/// - The connection pool is exhausted ([`DbError::PoolExhausted`])
-pub async fn connect(url: &str) -> Result<Connection, DbError> {
-    // ...
+/// Returns an I/O error when the file cannot be opened or read. Invalid UTF-8
+/// produces an error with kind [`std::io::ErrorKind::InvalidData`].
+pub fn read_file(path: &Path) -> std::io::Result<String> {
+    std::fs::read_to_string(path)
 }
 ```
 
@@ -114,6 +102,14 @@ Use intra-doc links to connect error variants to their definitions:
 /// the minimum length, or [`ValidationError::InvalidChars`] if it
 /// contains forbidden characters.
 ```
+
+## Verified Project
+
+<!-- verify: fixture=layouts -->
+
+See the real [validation fixture source](../checks/fixtures/layouts/flat-tool/src/lib.rs). The parse_port # Errors section links the concrete ParseIntError type, and public-API tests cover empty and out-of-range inputs.
+
+Run from `checks/fixtures/layouts` with Rust 1.97.1: `cargo test --workspace --all-targets`, `cargo test --workspace --doc`, `cargo doc --workspace --no-deps`, `cargo fmt --all --check`, and `cargo clippy --workspace --all-targets -- -D warnings`.
 
 ## See Also
 

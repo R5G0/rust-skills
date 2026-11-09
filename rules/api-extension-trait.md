@@ -86,9 +86,8 @@ impl<T, E: std::fmt::Display> ResultExt<T, E> for Result<T, E> {
 ## Ecosystem Examples
 
 ```rust
-// itertools::Itertools
-use itertools::Itertools;
-let groups = vec![1, 1, 2, 2, 3].into_iter().group_by(|x| *x);
+// Iterator grouping libraries also expose extension traits (for example,
+// itertools::Itertools); use the API of the dependency version in your project.
 
 // futures::StreamExt
 use futures::StreamExt;
@@ -101,6 +100,7 @@ reader.read(&mut buf).await?;
 
 // anyhow::Context
 use anyhow::Context;
+let path = "config.json";
 let content = std::fs::read_to_string(path)
     .with_context(|| format!("failed to read {}", path))?;
 ```

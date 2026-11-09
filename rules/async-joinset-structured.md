@@ -24,25 +24,25 @@ let results = futures::future::join_all(handles).await;
 
 ## Good
 
+<!-- verify: compile -->
 ```rust
 use tokio::task::JoinSet;
 
-let mut set = JoinSet::new();
-
-for url in urls {
-    set.spawn(fetch(url.clone()));
-}
-
-// Process results as they complete
-while let Some(result) = set.join_next().await {
-    match result {
-        Ok(Ok(data)) => process(data),
-        Ok(Err(e)) => log::error!("Task failed: {}", e),
-        Err(e) => log::error!("Task panicked: {}", e),
+#[tokio::main(flavor = "current_thread")]
+async fn main() -> Result<(), tokio::task::JoinError> {
+    let mut tasks = JoinSet::new();
+    for value in 1..=3 {
+        tasks.spawn(async move { value * 2 });
     }
+    let mut results = Vec::new();
+    while let Some(result) = tasks.join_next().await {
+        results.push(result?);
+    }
+    results.sort_unstable();
+    assert_eq!(results, [2, 4, 6]);
+    assert!(tasks.is_empty());
+    Ok(())
 }
-
-// All tasks done, set is empty
 ```
 
 ## Dynamic Task Addition
@@ -75,22 +75,25 @@ async fn worker_pool(mut rx: mpsc::Receiver<Task>) {
 
 ## Abort on Drop
 
+Dropping a `JoinSet` aborts its remaining async tasks. `abort_all()` requests cancellation without removing tasks from the set; drain the set when you need to observe their completion. A blocking task that has started cannot be stopped by aborting its handle.
+
 ```rust
 use tokio::task::JoinSet;
 
-{
-    let mut set = JoinSet::new();
-    set.spawn(long_running_task());
-    set.spawn(another_task());
-    
-    // Early exit
-    return;
-}  // JoinSet dropped here - all tasks are aborted!
+async fn abort_explicitly() {
+    let mut tasks = JoinSet::new();
+    tasks.spawn(std::future::pending::<()>());
+    tasks.abort_all();
+    while let Some(result) = tasks.join_next().await {
+        assert!(result.expect_err("pending task was cancelled").is_cancelled());
+    }
+}
 
-// Explicit abort
-let mut set = JoinSet::new();
-set.spawn(task());
-set.abort_all();  // Cancel all tasks
+async fn abort_by_leaving_scope() {
+    let mut tasks = JoinSet::new();
+    tasks.spawn(std::future::pending::<()>());
+    // Dropping tasks on return requests abortion of the pending task.
+}
 ```
 
 ## Error Handling Pattern

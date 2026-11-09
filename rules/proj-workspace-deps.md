@@ -199,6 +199,14 @@ thiserror.workspace = true
 proptest.workspace = true
 ```
 
+## Verified Project
+
+<!-- verify: fixture=layouts -->
+
+See the real [validation fixture source](../checks/fixtures/layouts/Cargo.toml). Both flat-tool and feature-tool inherit the local layout-shared dependency from workspace.dependencies. Cargo resolves and checks their actual cross-crate imports.
+
+Run from `checks/fixtures/layouts` with Rust 1.97.1: `cargo test --workspace --all-targets`, `cargo test --workspace --doc`, `cargo doc --workspace --no-deps`, `cargo fmt --all --check`, and `cargo clippy --workspace --all-targets -- -D warnings`.
+
 ## See Also
 
 - [proj-lib-main-split](./proj-lib-main-split.md) - Workspace structure

@@ -31,31 +31,17 @@ async fn fetch_with_timeout() -> Option<Data> {
 
 ## Good
 
+<!-- verify: compile -->
 ```rust
-use tokio::select;
+use std::future::{pending, ready};
 
-async fn fetch_with_timeout() -> Result<Data, Error> {
-    select! {
-        result = fetch_data() => result,
-        _ = tokio::time::sleep(Duration::from_secs(5)) => {
-            Err(Error::Timeout)
-        }
-    }
-}
-
-async fn fetch_with_fallback() -> Data {
-    select! {
-        result = fetch_primary() => {
-            match result {
-                Ok(data) => data,
-                Err(_) => fetch_fallback().await.unwrap()
-            }
-        }
-        _ = tokio::time::sleep(Duration::from_secs(1)) => {
-            // Primary too slow, use fallback
-            fetch_fallback().await.unwrap()
-        }
-    }
+#[tokio::main(flavor = "current_thread")]
+async fn main() {
+    let value = tokio::select! {
+        value = pending::<u32>() => value,
+        value = ready(42_u32) => value,
+    };
+    assert_eq!(value, 42);
 }
 ```
 
@@ -149,17 +135,19 @@ async fn event_loop(
 
 ## Racing Multiple of Same Type
 
+`select_all` needs movable (`Unpin`) futures and a nonempty collection. Pin boxed async futures and reject an empty server list before calling it.
+
 ```rust
-// Race multiple servers for fastest response
+use anyhow::{bail, Result};
+
 async fn fastest_response(servers: &[String]) -> Result<Response> {
-    let futures = servers.iter()
-        .map(|s| fetch_from(s))
-        .collect::<Vec<_>>();
-    
-    // select! requires static branches, use select_all for dynamic
-    let (result, _index, _remaining) = 
-        futures::future::select_all(futures).await;
-    
+    if servers.is_empty() {
+        bail!("at least one server is required");
+    }
+    let futures: Vec<_> = servers.iter()
+        .map(|server| Box::pin(fetch_from(server)))
+        .collect();
+    let (result, _index, _remaining) = futures::future::select_all(futures).await;
     result
 }
 ```

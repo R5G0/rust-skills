@@ -104,6 +104,8 @@ impl Default for Connection {
 ## Builder with Default
 
 ```rust
+struct Server { host: String, port: u16, workers: usize }
+
 #[derive(Default)]
 struct ServerBuilder {
     host: String,
@@ -121,6 +123,10 @@ impl ServerBuilder {
         self.port = port;
         self
     }
+}
+
+impl ServerBuilder {
+    fn build(self) -> Server { Server { host: self.host, port: self.port, workers: self.workers } }
 }
 
 // Clean initialization

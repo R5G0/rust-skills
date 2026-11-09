@@ -150,6 +150,12 @@ clarify the ownership flow; they do not make insertion itself free.
 | `get` + `insert` | 2 | 2 |
 | `entry().or_insert()` | 1 | 1 |
 
+## Verified Project
+
+<!-- verify: fixture=performance -->
+
+See the [executable implementations, regression tests, and benchmarks](../perf-validation/README.md) for this rule and its recorded measurement limits.
+
 ## See Also
 
 - [perf-extend-batch](./perf-extend-batch.md) - Batch insertions

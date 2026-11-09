@@ -1,0 +1,14 @@
+[package]
+name = "optimization-validation"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.97.1"
+publish = false
+
+[profile.release-lto]
+inherits = "release"
+lto = "thin"
+
+[profile.release-codegen]
+inherits = "release"
+codegen-units = 1

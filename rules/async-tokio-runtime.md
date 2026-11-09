@@ -30,42 +30,43 @@ async fn main() {
 
 ## Good
 
-```rust
-// Multi-threaded for concurrent IO (default)
-#[tokio::main]
-async fn main() {
-    // Good for many concurrent network connections
-    let handles: Vec<_> = urls.iter()
-        .map(|url| tokio::spawn(fetch(url.clone())))
-        .collect();
-    
-    futures::future::join_all(handles).await;
-}
+A multithreaded runtime executes spawned tasks on its worker pool:
 
-// Current-thread for single-threaded scenarios
+```rust
+#[tokio::main]
+async fn main() -> Result<(), tokio::task::JoinError> {
+    let handles: Vec<_> = (1..=3).map(|value| {
+        tokio::spawn(async move { value * 2 })
+    }).collect();
+    let mut total = 0;
+    for handle in handles {
+        total += handle.await?;
+    }
+    assert_eq!(total, 12);
+    Ok(())
+}
+```
+
+For a current-thread runtime, select that flavor explicitly:
+
+```rust
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
-    // Good for single-connection clients, simpler debugging
-    let client = Client::new();
-    client.run().await;
+    tokio::task::yield_now().await;
 }
+```
 
-// Custom configuration
-#[tokio::main(worker_threads = 4)]
-async fn main() {
-    // Limit to 4 worker threads
-}
+Configure a multithreaded runtime manually when worker names and counts matter:
 
-// Or manual setup for more control
-fn main() {
+```rust
+fn main() -> std::io::Result<()> {
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .worker_threads(4)
         .enable_all()
-        .thread_name("my-worker")
-        .build()
-        .unwrap();
-    
-    runtime.block_on(async_main());
+        .thread_name("example-worker")
+        .build()?;
+    runtime.block_on(async { tokio::task::yield_now().await; });
+    Ok(())
 }
 ```
 

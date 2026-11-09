@@ -1,0 +1,53 @@
+[package]
+name = "rust-skills-perf-validation"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.97.1"
+publish = false
+description = "Executable correctness checks and benchmarks for rust-skills performance rules"
+license = "MIT"
+
+[features]
+nightly-collect-into = []
+
+[dependencies]
+ahash = "0.8"
+rustc-hash = "2"
+
+[dev-dependencies]
+criterion = "0.5"
+proptest = "1"
+tempfile = "3"
+
+[[bench]]
+name = "perf_rules"
+harness = false
+
+[[example]]
+name = "collect_into_nightly"
+required-features = ["nightly-collect-into"]
+
+[profile.bench]
+debug = "line-tables-only"
+strip = false
+
+# Controlled experiments: each of these first two changes one release setting.
+[profile.release-lto]
+inherits = "release"
+lto = "thin"
+
+[profile.release-codegen]
+inherits = "release"
+codegen-units = 1
+
+# The rule's combined candidate also changes the failure contract.
+[profile.release-tuned]
+inherits = "release"
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = true
+
+[lints.rust]
+unsafe_code = "forbid"
+missing_docs = "warn"

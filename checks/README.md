@@ -1,62 +1,73 @@
-# checks — compile-verify the rule examples
+# Rule validation
 
-A dev tool that type-checks the ` ```rust ` code blocks in `../rules/*.md` so the
-"Good" examples we tell agents to write actually compile. Not part of the
-published skill.
+The pinned Rust **1.97.1**, edition 2024 validation has two separate obligations:
+
+1. Extract illustrative Rust blocks and reject real type/syntax errors.
+   `baseline.txt` has **no accepted SUSPECT diagnostics**.
+2. Require at least one compiled positive example or a successfully executed
+   real Cargo fixture for **every rule**. Comments, missing-symbol fragments,
+   and disabled test bodies cannot satisfy this obligation.
 
 ## Run
 
-```bash
-# structural / link / index checks (no toolchain needed)
-python3 checks/validate.py
-
-# compile-check the examples
-cd checks
-python3 gen.py                                              # extract blocks -> examples/
-cargo check --locked --examples --target x86_64-unknown-linux-gnu --keep-going --message-format=json > check.json
-python3 analyze.py check.json                               # classify results
-python3 analyze.py check.json --check-baseline baseline.txt # CI gate: require exact baseline parity
+```sh
+rustup component add rustfmt clippy llvm-tools-preview --toolchain 1.97.1
+bash checks/check.sh
 ```
 
-CI (`.github/workflows/ci.yml`) runs both gates through `checks/check.sh`.
-The example baseline is generated on Rust 1.97.1 for x86_64-unknown-linux-gnu.
+This is also the CI entry point. On Windows without Bash, run these commands
+in order from `checks/`:
 
-## Updating the baseline
-
-`baseline.txt` lists the currently-accepted suspects (fragments/pseudocode the
-heuristics can't auto-classify). The CI gate requires exact signature parity: both new and stale entries fail. It also rejects incomplete Cargo output so missing toolchains or failed dependency builds cannot appear successful. After intentionally adding/changing examples, regenerate it on the pinned
-toolchain and review the diff:
-
-```bash
-rustup run 1.97.1 cargo check --locked --examples --target x86_64-unknown-linux-gnu --keep-going --message-format=json > check.json
-python3 analyze.py check.json --emit-baseline > baseline.txt
+```powershell
+python validate.py
+python gen_index.py --check
+python gen.py
+cargo +1.97.1 check --locked --examples --target x86_64-unknown-linux-gnu --keep-going --message-format=json > check.json
+python analyze.py check.json --check-baseline baseline.txt
+python verify_rules.py check.json
 ```
 
-When bumping the pinned toolchain in `ci.yml`, regenerate `baseline.txt` on the
-same version in the same commit.
+Cargo's extraction check can return nonzero for context-dependent snippets; the
+following gates decide the result and reject incomplete output. Install the
+cross-check target with `rustup target add x86_64-unknown-linux-gnu --toolchain
+1.97.1` when necessary. Native fixtures and test harnesses run on the host.
 
-## How it works
+## Evidence and scope
 
-`gen.py` extracts each candidate block into `examples/<name>.rs`, wrapping
-fragments in an `async fn -> Result<...>` so `?` and `.await` type-check. It
-skips blocks that can't compile standalone by design: `## Bad` anti-patterns,
-nightly `#![feature]` gates, procedural-macro code, placeholder crate names
-(`my_crate`, …), and bare `...` pseudocode.
+`gen.py` writes exact candidate blocks to Cargo examples. The manifest binds
+them to source document hashes and lines. `verify_rules.py` rejects stale source
+or compiler output, and writes [`verification.json`](verification.json) with
+per-rule evidence and every non-compiling extracted block. Missing coverage,
+failing marked positives, and failing fixtures/tests fail the gate. Selected
+test examples run with the actual Rust test harness, including namespaced and
+parameterized test attributes. An expected test-bearing example running zero
+tests fails.
 
-`analyze.py` buckets each failing example by compiler error code:
+Rules can mark a complete primary block with `<!-- verify: compile -->` or name
+a curated project with `<!-- verify: fixture=layouts -->`. Unmarked rules still
+need an actual independently compiling example. Fixture markers execute only
+projects explicitly listed in the verifier, not arbitrary Markdown commands.
 
-- **fragment** — every error is name resolution (undefined symbol/crate). These
-  reference helpers defined elsewhere in the rule; expected, ignored.
-- **artifact** — caused by extraction (a `&self` method body wrapped as a free
-  fn, pseudocode `...`/`???` tokens, dangling doc comments). Not real bugs.
-- **low** — only "type annotations needed"; compiles in the rule's real context.
-- **SUSPECT** — anything else (type mismatch, no-method, bad syntax, wrong
-  arity, missing trait impl). These are the ones to review and fix.
+| Fixture | Checks |
+|---|---|
+| [`layouts`](fixtures/layouts/Cargo.toml) | Workspaces, modules, bins, integration tests, doctests, documentation links, formatting, Clippy |
+| [`proc-macros`](fixtures/proc-macros/Cargo.toml) | Real derive/facade/consumer crates, generics and `$crate` paths, invalid-input diagnostics and primary source spans |
+| [`optimization`](fixtures/optimization/Cargo.toml) | Cold paths, actual LTO/codegen builds, instrument/train/merge/profile-use PGO workflow and checked output |
+| [`cfg-check`](fixtures/cfg-check/Cargo.toml) | Features/custom cfg, enabled paths and rejection of a misspelled cfg |
+| [`performance`](../perf-validation/Cargo.toml) | Tests and benchmark execution for all 13 performance rules; measurements reported separately |
 
-## Notes
+This minimum gate does not claim that every supplementary snippet is standalone
+or that every algorithm is formally proved correct. Secondary snippets can
+depend on application types/helpers; those errors remain visible in the report.
+Intentional invalid examples use `compile_fail`; signature catalogs, directory
+layouts, and pseudocode are labeled as such. Nightly, platform-specific, FFI,
+Miri, and optional-feature claims need their corresponding environment. A stable
+compile result does not establish those stronger properties.
 
-- Run on Rust 1.97.1: some examples use APIs stabilized in 1.95 (e.g. the
-  `MaybeUninit` array `From` conversions) and will spuriously fail on older
-  toolchains.
-- Generated files (`examples/`, `*.json`, `manifest.json`, `target/`) are
-  gitignored; only the source (`gen.py`, `analyze.py`, `Cargo.toml`) is tracked.
+The classifier separates context/name-resolution fragments, extraction artifacts,
+and inference-only cases. Unstable-feature errors are not name-resolution errors.
+No real-error allowlist is used to make rule coverage pass.
+
+Generated examples, logs and build directories are ignored. Source programs,
+lockfiles, the verifier and latest per-rule evidence are tracked. Regenerate
+evidence with the pinned toolchain after changing rules or fixtures.

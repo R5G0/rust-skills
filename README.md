@@ -149,6 +149,20 @@ Each rule has:
 - A good code example
 - Links to related rules and sources
 
+## Validation
+
+CI requires fresh compile evidence for every rule: a complete positive example or
+a real Cargo project fixture. The [validation guide](checks/README.md) describes
+the checks and their limits; [the report](checks/verification.json) records each
+rule's source hash and evidence. Context-dependent supplementary snippets are
+listed separately and are not claimed to compile independently. There are no
+accepted real type/syntax errors in the suspect baseline.
+
+The [performance project](perf-validation/README.md) also executes correctness
+and property tests, Criterion benchmarks and build-profile experiments. Its
+[local results](perf-validation/results/summary.md) distinguish observed timings
+from general recommendations.
+
 ## How it works
 
 The design is built for low token cost and easy auditing:

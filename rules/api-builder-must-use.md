@@ -4,7 +4,7 @@
 
 ## Why It Matters
 
-Builder pattern methods return a modified builder. Without `#[must_use]`, calling a builder method and ignoring the return value silently does nothing—the builder is dropped, and the configuration is lost. This creates confusing bugs where code appears correct but has no effect.
+Builder pattern methods return a modified builder. Without `#[must_use]`, ignoring a consuming builder method drops the returned builder and its configuration. Reusing the original builder after that move is already a compile error; the attribute adds a diagnostic directly at the discarded expression.
 
 ## Bad
 
@@ -29,43 +29,34 @@ impl RequestBuilder {
 
 // Bug: builder methods are ignored - no warning!
 let request = RequestBuilder::new("https://api.example.com");
-request.timeout(Duration::from_secs(30));  // Dropped silently!
-request.header("Authorization", "Bearer token");  // Dropped silently!
-let response = request.send();  // Sends with no timeout or headers
+request.timeout(Duration::from_secs(30));  // Returned builder is discarded
+// Reusing request here is a moved-value error, not an unconfigured send.
 ```
 
 ## Good
 
 ```rust
-struct RequestBuilder {
-    url: String,
-    timeout: Option<Duration>,
-    headers: Vec<(String, String)>,
-}
+use std::time::Duration;
 
+struct Request { url: String, timeout: Option<Duration>, headers: Vec<(String, String)> }
+struct RequestBuilder { request: Request }
 impl RequestBuilder {
+    fn new(url: &str) -> Self { Self { request: Request { url: url.to_owned(), timeout: None, headers: Vec::new() } } }
     #[must_use = "builder methods return modified builder - chain or assign"]
-    fn timeout(mut self, duration: Duration) -> Self {
-        self.timeout = Some(duration);
-        self
-    }
-    
+    fn timeout(mut self, duration: Duration) -> Self { self.request.timeout = Some(duration); self }
     #[must_use = "builder methods return modified builder - chain or assign"]
-    fn header(mut self, key: &str, value: &str) -> Self {
-        self.headers.push((key.to_string(), value.to_string()));
-        self
-    }
+    fn header(mut self, key: &str, value: &str) -> Self { self.request.headers.push((key.to_owned(), value.to_owned())); self }
+    fn build(self) -> Request { self.request }
 }
 
-// Now warns: unused return value that must be used
-let request = RequestBuilder::new("https://api.example.com");
-request.timeout(Duration::from_secs(30));  // Warning!
-
-// Correct: chain methods
-let response = RequestBuilder::new("https://api.example.com")
+let request = RequestBuilder::new("https://api.example.com")
     .timeout(Duration::from_secs(30))
-    .header("Authorization", "Bearer token")
-    .send();
+    .header("Accept", "application/json")
+    .build();
+assert_eq!(request.timeout, Some(Duration::from_secs(30)));
+assert_eq!(request.headers, [(String::from("Accept"), String::from("application/json"))]);
+// RequestBuilder::new("https://api.example.com").timeout(Duration::from_secs(30));
+// ^ Ignoring this expression produces the must_use warning.
 ```
 
 ## Apply to Entire Type
@@ -134,6 +125,26 @@ pub enum Result<T, E> { ... }
 // Iterator adaptors
 let v = vec![1, 2, 3];
 v.iter().map(|x| x * 2);  // Warning: iterators are lazy
+```
+
+## Verified Example
+
+<!-- verify: compile -->
+```rust
+use std::time::Duration;
+
+#[must_use = "builders must be chained or assigned"]
+struct RequestBuilder { timeout: Duration }
+impl RequestBuilder {
+    fn new() -> Self { Self { timeout: Duration::from_secs(30) } }
+    #[must_use = "timeout returns the modified builder"]
+    fn timeout(mut self, timeout: Duration) -> Self { self.timeout = timeout; self }
+    fn build(self) -> Duration { self.timeout }
+}
+fn main() {
+    let timeout = RequestBuilder::new().timeout(Duration::from_secs(5)).build();
+    assert_eq!(timeout, Duration::from_secs(5));
+}
 ```
 
 ## See Also

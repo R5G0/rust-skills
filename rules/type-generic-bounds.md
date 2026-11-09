@@ -29,6 +29,9 @@ where
 ## Good
 
 ```rust
+use std::fmt::Debug;
+use std::error::Error;
+
 // No bounds on struct - store anything
 struct Container<T> {
     items: Vec<T>,
@@ -62,10 +65,13 @@ where
 struct MustBeClone<T: Clone> { data: T }  // Rarely needed
 
 // On impl: affects specific functionality
-impl<T: Clone> Container<T> { ... }  // Common pattern
+struct Container<T> { data: T }
+impl<T: Clone> Container<T> {
+    fn duplicate(&self) -> Self { Self { data: self.data.clone() } }
+}
 
 // On function: affects that function only
-fn requires_send<T: Send>(value: T) { ... }
+fn requires_send<T: Send>(value: T) -> T { value }
 
 // Recommendation: start with no bounds, add as needed
 ```
@@ -73,8 +79,10 @@ fn requires_send<T: Send>(value: T) { ... }
 ## Where Clause Benefits
 
 ```rust
+use std::fmt::Debug;
+
 // Inline: hard to read
-fn complex<T: Clone + Debug + Send, U: AsRef<str> + Into<String>>(t: T, u: U) { }
+fn complex_inline<T: Clone + Debug + Send, U: AsRef<str> + Into<String>>(t: T, u: U) { }
 
 // Where clause: clear and scannable
 fn complex<T, U>(t: T, u: U)
@@ -95,6 +103,8 @@ where
 ## Implied Bounds
 
 ```rust
+use std::fmt::Debug;
+
 // Supertrait bounds are implied
 trait Foo: Clone + Debug {}
 
@@ -105,7 +115,7 @@ fn process<T: Foo>(value: T) {
 }
 
 // Associated type bounds
-fn process<I>(iter: I)
+fn process_items<I>(iter: I)
 where
     I: Iterator,
     I::Item: Clone,  // Bound on associated type
@@ -115,6 +125,8 @@ where
 ## Conditional Trait Implementation
 
 ```rust
+use std::fmt::{self, Debug, Formatter};
+
 struct Wrapper<T>(T);
 
 // Implement Clone only when T: Clone
@@ -133,6 +145,22 @@ impl<T: Debug> Debug for Wrapper<T> {
 
 // Wrapper<i32> is Clone + Debug
 // Wrapper<NonCloneable> is neither
+```
+
+## Verified Example
+
+<!-- verify: compile -->
+```rust
+struct Container<T> { items: Vec<T> }
+impl<T> Container<T> { fn len(&self) -> usize { self.items.len() } }
+impl<T: Clone> Container<T> { fn duplicate(&self) -> Self { Self { items: self.items.clone() } } }
+struct UniqueResource;
+fn main() {
+    let unique = Container { items: vec![UniqueResource] };
+    assert_eq!(unique.len(), 1); // Storing a resource does not require Clone.
+    let values = Container { items: vec![1, 2] };
+    assert_eq!(values.duplicate().items, [1, 2]);
+}
 ```
 
 ## See Also

@@ -180,6 +180,12 @@ fn speculative(x: i32) -> i32 {
 }
 ```
 
+## Verified Project
+
+<!-- verify: fixture=optimization -->
+
+The [stable optimization fixture](../checks/fixtures/optimization/src/main.rs) uses `#[cold]` and tests both branches. Nightly examples above require their feature gate; the stable fixture does not claim to validate their generated machine-code layout.
+
 ## See Also
 
 - [opt-cold-unlikely](./opt-cold-unlikely.md) - #[cold] for unlikely functions

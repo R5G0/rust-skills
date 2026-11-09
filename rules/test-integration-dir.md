@@ -35,24 +35,17 @@ fn integration_test_full_workflow() {
 ## Good
 
 ```rust
-// tests/integration_test.rs
-use my_crate::{Client, Config};  // Uses public API only
+// tests/public_api.rs
+use layout_flat_tool::{Config, parse_port, run};
 
 #[test]
-fn test_full_workflow() {
-    let config = Config::default();
-    let client = Client::new(config);
-    
-    let result = client.process("input");
-    assert!(result.is_ok());
+fn run_greets_the_configured_name() {
+    assert_eq!(run(Config::new("Ada")), "Hello, Ada!");
 }
 
 #[test]
-fn test_error_handling() {
-    let client = Client::new(Config::strict());
-    
-    let result = client.process("invalid");
-    assert!(matches!(result, Err(Error::InvalidInput { .. })));
+fn parse_port_rejects_out_of_range_input() {
+    assert!(parse_port("65536").is_err());
 }
 ```
 
@@ -136,6 +129,14 @@ cargo test --test integration_test
 # Run tests matching pattern
 cargo test --test api_tests test_login
 ```
+
+## Verified Project
+
+<!-- verify: fixture=layouts -->
+
+See the real [validation fixture source](../checks/fixtures/layouts/flat-tool/tests/public_api.rs). Cargo compiles this tests/ file as a separate test crate. It imports only public Config, run, parse_port, and divide APIs and executes their success, error, and panic contracts.
+
+Run from `checks/fixtures/layouts` with Rust 1.97.1: `cargo test --workspace --all-targets`, `cargo test --workspace --doc`, `cargo doc --workspace --no-deps`, `cargo fmt --all --check`, and `cargo clippy --workspace --all-targets -- -D warnings`.
 
 ## See Also
 

@@ -31,41 +31,33 @@ async fn bad_async_mutex(data: &AsyncMutex<Vec<i32>>) {
 
 ## Good
 
+<!-- verify: compile -->
 ```rust
 use std::sync::Mutex;
-use tokio::sync::Mutex as AsyncMutex;
 
-// Release lock before await
-async fn good_approach(data: &Mutex<Vec<i32>>) {
-    let value = {
-        let guard = data.lock().unwrap();
-        guard.last().copied()  // Extract what you need
-    };  // Lock released here
-    
-    let result = do_async_work(value).await;
-    
-    {
-        let mut guard = data.lock().unwrap();
-        guard.push(result);
-    }
+async fn append_from_snapshot(data: &Mutex<Vec<i32>>) {
+    let previous = {
+        let guard = data.lock().expect("another task panicked while holding the lock");
+        guard.last().copied().unwrap_or(0)
+    }; // Synchronous guard is dropped before suspension.
+    tokio::task::yield_now().await;
+    data.lock().expect("another task panicked while holding the lock").push(previous + 1);
 }
 
-// Minimize lock scope with async mutex
-async fn good_async_mutex(data: &AsyncMutex<Vec<i32>>, item: i32) {
-    // Quick lock, quick release
-    data.lock().await.push(item);
-    
-    // Async work without lock
-    let result = slow_network_call().await;
-    
-    // Quick lock again
-    data.lock().await.push(result);
+#[tokio::main(flavor = "current_thread")]
+async fn main() {
+    let data = Mutex::new(vec![1]);
+    append_from_snapshot(&data).await;
+    assert_eq!(*data.lock().expect("example does not panic under lock"), [1, 2]);
 }
 ```
 
 ## Pattern: Clone Before Await
 
 ```rust
+use anyhow::Result;
+use tokio::sync::Mutex as AsyncMutex;
+
 async fn process(data: &AsyncMutex<Config>) -> Result<()> {
     // Clone inside lock scope
     let config = data.lock().await.clone();

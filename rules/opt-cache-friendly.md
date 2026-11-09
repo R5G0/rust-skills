@@ -135,7 +135,14 @@ struct Node {
 }
 
 fn sum_linked(head: &Node) -> i32 {
-    // Each node is a cache miss
+    // Each link adds dependent access; an actual cache miss is workload-dependent.
+    let mut current = Some(head);
+    let mut total = 0;
+    while let Some(node) = current {
+        total += node.value;
+        current = node.next.as_deref();
+    }
+    total
 }
 
 // Good: contiguous vector

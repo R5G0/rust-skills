@@ -5,7 +5,8 @@
 #
 # It runs the exact same gates CI runs, pinned to the same toolchain
 # (checks/rust-toolchain.toml -> Rust 1.97.1) and the same compile target
-# (x86_64-unknown-linux-gnu), so a green run here means a green run on CI.
+# (x86_64-unknown-linux-gnu). Executable fixtures additionally run on the host;
+# platform-sensitive behavior still needs the corresponding target environment.
 # On non-x86 hosts (e.g. Apple Silicon) the examples are cross-checked for that
 # target — `cargo check` type-checks without linking, so no cross-linker needed.
 set -euo pipefail
@@ -29,5 +30,8 @@ cargo check --locked --examples --target "$TARGET" --keep-going --message-format
 
 echo "==> gating against the baseline"
 python3 analyze.py check.json --check-baseline baseline.txt
+
+echo "==> per-rule compile coverage and real project fixtures"
+python3 verify_rules.py check.json
 
 echo "All checks passed."

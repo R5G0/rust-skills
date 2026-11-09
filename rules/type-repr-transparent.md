@@ -13,7 +13,7 @@
 struct Handle(u64);
 
 // Passing to C code might fail
-extern "C" {
+unsafe extern "C" {
     fn process_handle(h: Handle);  // May not work correctly
 }
 
@@ -24,12 +24,14 @@ struct SafePointer(*mut c_void);
 ## Good
 
 ```rust
+use std::ffi::c_void;
+
 // Guaranteed same layout as inner type
 #[repr(transparent)]
 struct Handle(u64);
 
 // Safe for FFI
-extern "C" {
+unsafe extern "C" {
     fn process_handle(h: Handle);  // Works - same layout as u64
 }
 
@@ -99,13 +101,13 @@ assert_eq!(size_of::<Option<NonZeroHandle>>(), size_of::<u64>());
 
 ```rust
 mod ffi {
-    use std::os::raw::c_int;
+    use std::os::raw::{c_char, c_int};
     
     #[repr(transparent)]
     pub struct FileDescriptor(c_int);
     
-    extern "C" {
-        pub fn open(path: *const i8, flags: c_int) -> FileDescriptor;
+    unsafe extern "C" {
+        pub fn open(path: *const c_char, flags: c_int) -> FileDescriptor;
         pub fn close(fd: FileDescriptor) -> c_int;
         pub fn read(fd: FileDescriptor, buf: *mut u8, len: usize) -> isize;
     }

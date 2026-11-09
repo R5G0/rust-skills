@@ -124,6 +124,16 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize)]
 pub struct Email(String);
 
+impl Email {
+    fn new(value: &str) -> Result<Self, String> {
+        // Minimal example policy; use the application's full address policy.
+        match value.split_once('@') {
+            Some((local, domain)) if !local.is_empty() && !domain.is_empty() => Ok(Self(value.to_owned())),
+            _ => Err(String::from("address requires a nonempty local part and domain")),
+        }
+    }
+}
+
 impl<'de> Deserialize<'de> for Email {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -150,6 +160,25 @@ macro_rules! email {
 }
 
 let admin = email!("admin@example.com");  // Validated at compile time
+```
+
+## Verified Example
+
+<!-- verify: compile -->
+```rust
+#[derive(Debug, PartialEq)]
+struct NonEmptyString(String);
+impl NonEmptyString {
+    fn new(value: String) -> Result<Self, &'static str> {
+        if value.is_empty() { Err("empty string") } else { Ok(Self(value)) }
+    }
+    fn as_str(&self) -> &str { &self.0 }
+}
+fn main() {
+    assert_eq!(NonEmptyString::new(String::new()), Err("empty string"));
+    let name = NonEmptyString::new(String::from("Ada")).unwrap();
+    assert_eq!(name.as_str(), "Ada");
+}
 ```
 
 ## See Also

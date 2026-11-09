@@ -1,0 +1,1429 @@
+{
+  "created_utc": "2026-11-09T19:17:15.753729+00:00",
+  "platform": "Windows-10-10.0.26200-SP0",
+  "cpu": "Intel64 Family 6 Model 183 Stepping 1, GenuineIntel",
+  "logical_cpus": 24,
+  "rules": [
+    "perf-ahash",
+    "perf-black-box-bench",
+    "perf-chain-avoid",
+    "perf-collect-into",
+    "perf-collect-once",
+    "perf-drain-reuse",
+    "perf-entry-api",
+    "perf-extend-batch",
+    "perf-io-buffering",
+    "perf-iter-lazy",
+    "perf-iter-over-index",
+    "perf-profile-first",
+    "perf-release-profile"
+  ],
+  "checks": [
+    {
+      "check": "toolchain",
+      "command": [
+        "rustc",
+        "+1.97.1",
+        "-Vv"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.036,
+      "tests_passed": 0
+    },
+    {
+      "check": "format",
+      "command": [
+        "cargo",
+        "+1.97.1",
+        "--offline",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.133,
+      "tests_passed": 0
+    },
+    {
+      "check": "clippy",
+      "command": [
+        "cargo",
+        "+1.97.1",
+        "--offline",
+        "clippy",
+        "--locked",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.768,
+      "tests_passed": 0
+    },
+    {
+      "check": "tests-debug",
+      "command": [
+        "cargo",
+        "+1.97.1",
+        "--offline",
+        "test",
+        "--locked"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 2.344,
+      "tests_passed": 46
+    },
+    {
+      "check": "tests-release",
+      "command": [
+        "cargo",
+        "+1.97.1",
+        "--offline",
+        "test",
+        "--locked",
+        "--release"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 1.985,
+      "tests_passed": 46
+    },
+    {
+      "check": "benchmark-list",
+      "command": [
+        "cargo",
+        "+1.97.1",
+        "--offline",
+        "bench",
+        "--locked",
+        "--bench",
+        "perf_rules",
+        "--",
+        "--list"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 1.565,
+      "tests_passed": 0
+    },
+    {
+      "check": "benchmark-smoke",
+      "command": [
+        "cargo",
+        "+1.97.1",
+        "--offline",
+        "bench",
+        "--locked",
+        "--bench",
+        "perf_rules",
+        "--",
+        "--test"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.938,
+      "tests_passed": 0
+    },
+    {
+      "check": "benchmark-measurements",
+      "command": [
+        "cargo",
+        "+1.97.1",
+        "--offline",
+        "bench",
+        "--locked",
+        "--bench",
+        "perf_rules"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 213.707,
+      "tests_passed": 0
+    },
+    {
+      "check": "build-release",
+      "command": [
+        "cargo",
+        "+1.97.1",
+        "--offline",
+        "build",
+        "--locked",
+        "--profile",
+        "release",
+        "--bin",
+        "profile_probe"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 1.173,
+      "tests_passed": 0
+    },
+    {
+      "check": "probe-release",
+      "command": [
+        "D:\\projects\\rust-skills\\perf-validation\\target\\release\\profile_probe.exe"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.372,
+      "tests_passed": 0
+    },
+    {
+      "check": "build-release-lto",
+      "command": [
+        "cargo",
+        "+1.97.1",
+        "--offline",
+        "build",
+        "--locked",
+        "--profile",
+        "release-lto",
+        "--bin",
+        "profile_probe"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.145,
+      "tests_passed": 0
+    },
+    {
+      "check": "probe-release-lto",
+      "command": [
+        "D:\\projects\\rust-skills\\perf-validation\\target\\release-lto\\profile_probe.exe"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.065,
+      "tests_passed": 0
+    },
+    {
+      "check": "build-release-codegen",
+      "command": [
+        "cargo",
+        "+1.97.1",
+        "--offline",
+        "build",
+        "--locked",
+        "--profile",
+        "release-codegen",
+        "--bin",
+        "profile_probe"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.147,
+      "tests_passed": 0
+    },
+    {
+      "check": "probe-release-codegen",
+      "command": [
+        "D:\\projects\\rust-skills\\perf-validation\\target\\release-codegen\\profile_probe.exe"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.073,
+      "tests_passed": 0
+    },
+    {
+      "check": "build-release-tuned",
+      "command": [
+        "cargo",
+        "+1.97.1",
+        "--offline",
+        "build",
+        "--locked",
+        "--profile",
+        "release-tuned",
+        "--bin",
+        "profile_probe"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.148,
+      "tests_passed": 0
+    },
+    {
+      "check": "probe-release-tuned",
+      "command": [
+        "D:\\projects\\rust-skills\\perf-validation\\target\\release-tuned\\profile_probe.exe"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.073,
+      "tests_passed": 0
+    },
+    {
+      "check": "nightly-toolchain",
+      "command": [
+        "rustc",
+        "+nightly",
+        "-Vv"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.05,
+      "tests_passed": 0
+    },
+    {
+      "check": "nightly-collect-into",
+      "command": [
+        "cargo",
+        "+nightly",
+        "--offline",
+        "run",
+        "--locked",
+        "--example",
+        "collect_into_nightly",
+        "--features",
+        "nightly-collect-into"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.31,
+      "tests_passed": 0
+    }
+  ],
+  "benchmarks": [
+    {
+      "id": "perf-ahash/ahash/integers/repeated/32",
+      "mean_ns": 1565.8980481932667,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 1246.0971116931526,
+        "upper_bound": 1926.6458748767272
+      }
+    },
+    {
+      "id": "perf-ahash/ahash/integers/repeated/4096",
+      "mean_ns": 331675.9400667939,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 280550.17011048034,
+        "upper_bound": 382549.2024906619
+      }
+    },
+    {
+      "id": "perf-ahash/ahash/integers/unique/32",
+      "mean_ns": 2425.9759712242912,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 2280.938323284405,
+        "upper_bound": 2622.893060728318
+      }
+    },
+    {
+      "id": "perf-ahash/ahash/integers/unique/4096",
+      "mean_ns": 369312.54936338385,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 333654.26262642886,
+        "upper_bound": 411781.3287337947
+      }
+    },
+    {
+      "id": "perf-ahash/ahash/strings/repeated/width128/32",
+      "mean_ns": 1260.3116927199812,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 1254.8543363323358,
+        "upper_bound": 1266.3760126001705
+      }
+    },
+    {
+      "id": "perf-ahash/ahash/strings/repeated/width128/4096",
+      "mean_ns": 530868.4806407657,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 443934.7024305302,
+        "upper_bound": 632295.9341860727
+      }
+    },
+    {
+      "id": "perf-ahash/ahash/strings/repeated/width8/32",
+      "mean_ns": 963.0473254438232,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 955.3103187884778,
+        "upper_bound": 972.501447007035
+      }
+    },
+    {
+      "id": "perf-ahash/ahash/strings/repeated/width8/4096",
+      "mean_ns": 316008.2661220648,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 261198.18780786268,
+        "upper_bound": 371990.61261991755
+      }
+    },
+    {
+      "id": "perf-ahash/ahash/strings/unique/width128/32",
+      "mean_ns": 3667.650690348931,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 2970.7895811591993,
+        "upper_bound": 4448.1388366177625
+      }
+    },
+    {
+      "id": "perf-ahash/ahash/strings/unique/width128/4096",
+      "mean_ns": 476013.2136583939,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 398002.23154408537,
+        "upper_bound": 558597.5043582245
+      }
+    },
+    {
+      "id": "perf-ahash/ahash/strings/unique/width8/32",
+      "mean_ns": 2001.3871398144158,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 1636.4934249469213,
+        "upper_bound": 2421.8084882199046
+      }
+    },
+    {
+      "id": "perf-ahash/ahash/strings/unique/width8/4096",
+      "mean_ns": 351738.72632692824,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 280013.89744145767,
+        "upper_bound": 427057.0005384987
+      }
+    },
+    {
+      "id": "perf-ahash/fx/integers/repeated/32",
+      "mean_ns": 2762.9551373723484,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 2480.47839241974,
+        "upper_bound": 3054.795162171937
+      }
+    },
+    {
+      "id": "perf-ahash/fx/integers/repeated/4096",
+      "mean_ns": 256463.67180087438,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 241377.1036838651,
+        "upper_bound": 278464.3015123829
+      }
+    },
+    {
+      "id": "perf-ahash/fx/integers/unique/32",
+      "mean_ns": 3098.72844266515,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 2801.1710310372714,
+        "upper_bound": 3396.515920084784
+      }
+    },
+    {
+      "id": "perf-ahash/fx/integers/unique/4096",
+      "mean_ns": 175255.57467812832,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 155366.63435285512,
+        "upper_bound": 197298.39783632278
+      }
+    },
+    {
+      "id": "perf-ahash/fx/strings/repeated/width128/32",
+      "mean_ns": 1125.1410344064825,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 1118.3929569320157,
+        "upper_bound": 1132.395640096149
+      }
+    },
+    {
+      "id": "perf-ahash/fx/strings/repeated/width128/4096",
+      "mean_ns": 371202.1373962235,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 325201.44830846676,
+        "upper_bound": 416692.0191111233
+      }
+    },
+    {
+      "id": "perf-ahash/fx/strings/repeated/width8/32",
+      "mean_ns": 888.8840938985198,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 883.5166804159527,
+        "upper_bound": 895.2236655613672
+      }
+    },
+    {
+      "id": "perf-ahash/fx/strings/repeated/width8/4096",
+      "mean_ns": 387775.96222015907,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 343034.4992841293,
+        "upper_bound": 439339.76693561283
+      }
+    },
+    {
+      "id": "perf-ahash/fx/strings/unique/width128/32",
+      "mean_ns": 4622.094853908367,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 4059.4592876937213,
+        "upper_bound": 5203.874744150261
+      }
+    },
+    {
+      "id": "perf-ahash/fx/strings/unique/width128/4096",
+      "mean_ns": 415062.7048570726,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 370413.4467856572,
+        "upper_bound": 463510.5154953071
+      }
+    },
+    {
+      "id": "perf-ahash/fx/strings/unique/width8/32",
+      "mean_ns": 4290.949920454447,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 3828.348753073244,
+        "upper_bound": 4798.11648643028
+      }
+    },
+    {
+      "id": "perf-ahash/fx/strings/unique/width8/4096",
+      "mean_ns": 454281.72140329453,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 416119.46224043466,
+        "upper_bound": 491554.2558005105
+      }
+    },
+    {
+      "id": "perf-ahash/std/integers/repeated/32",
+      "mean_ns": 1036.2677790678601,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 1032.6065120168134,
+        "upper_bound": 1040.3653995651391
+      }
+    },
+    {
+      "id": "perf-ahash/std/integers/repeated/4096",
+      "mean_ns": 374703.1431511558,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 336396.910395548,
+        "upper_bound": 414773.06519116415
+      }
+    },
+    {
+      "id": "perf-ahash/std/integers/unique/32",
+      "mean_ns": 3994.0603806808363,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 3570.9840389473666,
+        "upper_bound": 4425.065130879535
+      }
+    },
+    {
+      "id": "perf-ahash/std/integers/unique/4096",
+      "mean_ns": 436231.41138276,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 397882.99440414313,
+        "upper_bound": 476692.1189163307
+      }
+    },
+    {
+      "id": "perf-ahash/std/strings/repeated/width128/32",
+      "mean_ns": 1752.10633653961,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 1743.7926920658185,
+        "upper_bound": 1762.7058020837555
+      }
+    },
+    {
+      "id": "perf-ahash/std/strings/repeated/width128/4096",
+      "mean_ns": 698303.9374702756,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 615764.3548075074,
+        "upper_bound": 786804.663613031
+      }
+    },
+    {
+      "id": "perf-ahash/std/strings/repeated/width8/32",
+      "mean_ns": 2386.9027571162655,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 2026.4230646739181,
+        "upper_bound": 2742.6259150313954
+      }
+    },
+    {
+      "id": "perf-ahash/std/strings/repeated/width8/4096",
+      "mean_ns": 439939.70484972483,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 384266.69837745547,
+        "upper_bound": 494064.66238531977
+      }
+    },
+    {
+      "id": "perf-ahash/std/strings/unique/width128/32",
+      "mean_ns": 4688.202084373545,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 4193.398134071427,
+        "upper_bound": 5240.309752559438
+      }
+    },
+    {
+      "id": "perf-ahash/std/strings/unique/width128/4096",
+      "mean_ns": 697642.042252322,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 618223.8009355655,
+        "upper_bound": 788039.8230564864
+      }
+    },
+    {
+      "id": "perf-ahash/std/strings/unique/width8/32",
+      "mean_ns": 4545.711702696947,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 3771.0541732044044,
+        "upper_bound": 5459.480967023062
+      }
+    },
+    {
+      "id": "perf-ahash/std/strings/unique/width8/4096",
+      "mean_ns": 527840.2416170015,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 471886.89996017754,
+        "upper_bound": 583420.0793330448
+      }
+    },
+    {
+      "id": "perf-black-box-bench/discarded_constant_input",
+      "mean_ns": 1.3305950399085447,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 1.3278940213852977,
+        "upper_bound": 1.3334940633850654
+      }
+    },
+    {
+      "id": "perf-black-box-bench/opaque_input_and_output",
+      "mean_ns": 1.4896716436464688,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 1.4790631153764424,
+        "upper_bound": 1.50019977680148
+      }
+    },
+    {
+      "id": "perf-black-box-bench/opaque_input_returned_output",
+      "mean_ns": 1.3663153473605794,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 1.3629480669810206,
+        "upper_bound": 1.3699009024062634
+      }
+    },
+    {
+      "id": "perf-chain-avoid/chain/32",
+      "mean_ns": 58.63116915262988,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 52.01367513033745,
+        "upper_bound": 65.66033878472216
+      }
+    },
+    {
+      "id": "perf-chain-avoid/chain/4096",
+      "mean_ns": 2055.827776841325,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 2047.3497290371524,
+        "upper_bound": 2065.9544202656707
+      }
+    },
+    {
+      "id": "perf-chain-avoid/separate/32",
+      "mean_ns": 8.660109946420905,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 8.135593815909354,
+        "upper_bound": 9.511309533430172
+      }
+    },
+    {
+      "id": "perf-chain-avoid/separate/4096",
+      "mean_ns": 830.7646834571435,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 808.1618236468819,
+        "upper_bound": 869.4932987559631
+      }
+    },
+    {
+      "id": "perf-collect-into/fresh/32",
+      "mean_ns": 5959.907463219054,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 4938.41754389239,
+        "upper_bound": 7272.804504044687
+      }
+    },
+    {
+      "id": "perf-collect-into/fresh/4096",
+      "mean_ns": 123211.68057270198,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 110453.63158379126,
+        "upper_bound": 136181.3722275114
+      }
+    },
+    {
+      "id": "perf-collect-into/stable-extend-reused/32",
+      "mean_ns": 1179.6683363730158,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 1019.7016131712801,
+        "upper_bound": 1349.964410392045
+      }
+    },
+    {
+      "id": "perf-collect-into/stable-extend-reused/4096",
+      "mean_ns": 76708.3952969077,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 64767.98193722925,
+        "upper_bound": 90802.56462645785
+      }
+    },
+    {
+      "id": "perf-collect-once/once/mixed-32",
+      "mean_ns": 804.4210594166908,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 640.5366167751977,
+        "upper_bound": 974.0916494743472
+      }
+    },
+    {
+      "id": "perf-collect-once/once/mixed-4096",
+      "mean_ns": 97045.52338574025,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 84454.3780785409,
+        "upper_bound": 112764.30122036792
+      }
+    },
+    {
+      "id": "perf-collect-once/once/none-32",
+      "mean_ns": 911.3852651292144,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 806.1518924633648,
+        "upper_bound": 1056.812794597207
+      }
+    },
+    {
+      "id": "perf-collect-once/once/none-4096",
+      "mean_ns": 79181.246454035,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 66585.36964640599,
+        "upper_bound": 92792.45528579887
+      }
+    },
+    {
+      "id": "perf-collect-once/staged/mixed-32",
+      "mean_ns": 775.2612113571342,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 747.0844829666779,
+        "upper_bound": 804.4464138728507
+      }
+    },
+    {
+      "id": "perf-collect-once/staged/mixed-4096",
+      "mean_ns": 111061.42445218985,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 98602.27475034293,
+        "upper_bound": 124623.44158042547
+      }
+    },
+    {
+      "id": "perf-collect-once/staged/none-32",
+      "mean_ns": 1331.4844069588803,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 1094.0427839588872,
+        "upper_bound": 1597.5926144976995
+      }
+    },
+    {
+      "id": "perf-collect-once/staged/none-4096",
+      "mean_ns": 578030.719243678,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 284141.55100255,
+        "upper_bound": 927941.4539460255
+      }
+    },
+    {
+      "id": "perf-drain-reuse/fresh/32",
+      "mean_ns": 196.68035646164563,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 181.82103338593322,
+        "upper_bound": 212.915297991781
+      }
+    },
+    {
+      "id": "perf-drain-reuse/fresh/4096",
+      "mean_ns": 49891.717397484885,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 47748.18408071073,
+        "upper_bound": 51778.17772611724
+      }
+    },
+    {
+      "id": "perf-drain-reuse/reused/32",
+      "mean_ns": 106.99391404564226,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 95.61243648456357,
+        "upper_bound": 119.7307346920797
+      }
+    },
+    {
+      "id": "perf-drain-reuse/reused/4096",
+      "mean_ns": 42689.89019899862,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 35362.0011358231,
+        "upper_bound": 50679.76130296753
+      }
+    },
+    {
+      "id": "perf-entry-api/entry-repeated/32",
+      "mean_ns": 5123.9218640953095,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 4625.336385969301,
+        "upper_bound": 5629.197741036443
+      }
+    },
+    {
+      "id": "perf-entry-api/entry-repeated/4096",
+      "mean_ns": 525010.8814691262,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 431708.13978267636,
+        "upper_bound": 628195.9876894512
+      }
+    },
+    {
+      "id": "perf-entry-api/entry-unique/32",
+      "mean_ns": 4274.046242528916,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 4094.892213063336,
+        "upper_bound": 4510.287140780289
+      }
+    },
+    {
+      "id": "perf-entry-api/entry-unique/4096",
+      "mean_ns": 777144.757504284,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 701240.4887032141,
+        "upper_bound": 856037.8979866116
+      }
+    },
+    {
+      "id": "perf-entry-api/reference-repeated/32",
+      "mean_ns": 1686.2977210037498,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 1679.568668642397,
+        "upper_bound": 1693.7930696762212
+      }
+    },
+    {
+      "id": "perf-entry-api/reference-repeated/4096",
+      "mean_ns": 425600.75676471554,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 382521.83959186403,
+        "upper_bound": 473664.50800225476
+      }
+    },
+    {
+      "id": "perf-entry-api/reference-unique/32",
+      "mean_ns": 4984.855298531863,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 4621.413314907152,
+        "upper_bound": 5364.4645713258205
+      }
+    },
+    {
+      "id": "perf-entry-api/reference-unique/4096",
+      "mean_ns": 659068.3774779764,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 558888.4006118552,
+        "upper_bound": 773401.3561492704
+      }
+    },
+    {
+      "id": "perf-extend-batch/extend/32",
+      "mean_ns": 113.61657966207028,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 104.32462022125812,
+        "upper_bound": 122.77220576128396
+      }
+    },
+    {
+      "id": "perf-extend-batch/extend/4096",
+      "mean_ns": 806.8565667442546,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 696.6245882472139,
+        "upper_bound": 905.9109203280548
+      }
+    },
+    {
+      "id": "perf-extend-batch/push/32",
+      "mean_ns": 352.0833541486852,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 327.4822422557046,
+        "upper_bound": 378.5845748451891
+      }
+    },
+    {
+      "id": "perf-extend-batch/push/4096",
+      "mean_ns": 6895.707132673803,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 6273.452179760951,
+        "upper_bound": 7548.868796787436
+      }
+    },
+    {
+      "id": "perf-io-buffering/read/buffered-1024/32",
+      "mean_ns": 31191.15730221684,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 29683.61819712706,
+        "upper_bound": 32934.62847259775
+      }
+    },
+    {
+      "id": "perf-io-buffering/read/buffered-1024/512",
+      "mean_ns": 23553.95138295916,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 22183.430049243645,
+        "upper_bound": 25164.814908335753
+      }
+    },
+    {
+      "id": "perf-io-buffering/read/buffered-8192/32",
+      "mean_ns": 34835.90430731883,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 31707.00199682141,
+        "upper_bound": 38722.68831464788
+      }
+    },
+    {
+      "id": "perf-io-buffering/read/buffered-8192/512",
+      "mean_ns": 12968.183713494309,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 12706.637258459317,
+        "upper_bound": 13311.080444876327
+      }
+    },
+    {
+      "id": "perf-io-buffering/read/unbuffered/32",
+      "mean_ns": 1113957.96744396,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 1010049.0206892801,
+        "upper_bound": 1219528.4859031388
+      }
+    },
+    {
+      "id": "perf-io-buffering/read/unbuffered/512",
+      "mean_ns": 17440053.333333332,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 14671052.375,
+        "upper_bound": 20339877.416666668
+      }
+    },
+    {
+      "id": "perf-io-buffering/write/buffered-1024/32",
+      "mean_ns": 50318.250429868734,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 48754.29640530032,
+        "upper_bound": 52102.958700941555
+      }
+    },
+    {
+      "id": "perf-io-buffering/write/buffered-1024/512",
+      "mean_ns": 54030.31799769254,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 50592.9826515685,
+        "upper_bound": 58680.47061651056
+      }
+    },
+    {
+      "id": "perf-io-buffering/write/buffered-8192/32",
+      "mean_ns": 48304.55956745312,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 46600.691750964965,
+        "upper_bound": 50080.04970960589
+      }
+    },
+    {
+      "id": "perf-io-buffering/write/buffered-8192/512",
+      "mean_ns": 31668.238483875124,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 30051.874986334708,
+        "upper_bound": 33658.99137382803
+      }
+    },
+    {
+      "id": "perf-io-buffering/write/unbuffered/32",
+      "mean_ns": 697801.6015488128,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 669404.008573829,
+        "upper_bound": 730972.181437607
+      }
+    },
+    {
+      "id": "perf-io-buffering/write/unbuffered/512",
+      "mean_ns": 2007091.6710761476,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 1912634.6787437573,
+        "upper_bound": 2123747.122891648
+      }
+    },
+    {
+      "id": "perf-iter-lazy/eager/absent-32",
+      "mean_ns": 17.01905191067538,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 14.423615751426388,
+        "upper_bound": 19.726270576780287
+      }
+    },
+    {
+      "id": "perf-iter-lazy/eager/absent-4096",
+      "mean_ns": 1944.1735243742412,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 1721.9289938167003,
+        "upper_bound": 2184.208015132364
+      }
+    },
+    {
+      "id": "perf-iter-lazy/eager/early-32",
+      "mean_ns": 64.1574846816953,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 51.03751756534131,
+        "upper_bound": 78.21539911985607
+      }
+    },
+    {
+      "id": "perf-iter-lazy/eager/early-4096",
+      "mean_ns": 1823.6782338267315,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 1667.4522786260097,
+        "upper_bound": 1982.5718618018311
+      }
+    },
+    {
+      "id": "perf-iter-lazy/eager/late-32",
+      "mean_ns": 79.3440287671826,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 72.31221965748131,
+        "upper_bound": 88.66023273727882
+      }
+    },
+    {
+      "id": "perf-iter-lazy/eager/late-4096",
+      "mean_ns": 1784.7521449502124,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 1581.163587341763,
+        "upper_bound": 1997.9441020753177
+      }
+    },
+    {
+      "id": "perf-iter-lazy/lazy/absent-32",
+      "mean_ns": 27.72456605136148,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 24.625066675187192,
+        "upper_bound": 30.871922062167243
+      }
+    },
+    {
+      "id": "perf-iter-lazy/lazy/absent-4096",
+      "mean_ns": 1160.6852132138963,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 955.0882214856462,
+        "upper_bound": 1421.7482977538439
+      }
+    },
+    {
+      "id": "perf-iter-lazy/lazy/early-32",
+      "mean_ns": 2.606008402141477,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 2.414803369062147,
+        "upper_bound": 2.8103346046578723
+      }
+    },
+    {
+      "id": "perf-iter-lazy/lazy/early-4096",
+      "mean_ns": 2.2233142886091244,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 1.989812067192142,
+        "upper_bound": 2.4796298132300225
+      }
+    },
+    {
+      "id": "perf-iter-lazy/lazy/late-32",
+      "mean_ns": 20.042829302455928,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 16.41366243299718,
+        "upper_bound": 23.865608239363496
+      }
+    },
+    {
+      "id": "perf-iter-lazy/lazy/late-4096",
+      "mean_ns": 2441.5556135072934,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 2034.487303699142,
+        "upper_bound": 2849.8706592890035
+      }
+    },
+    {
+      "id": "perf-iter-over-index/indexed/32",
+      "mean_ns": 6.2847066904409905,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 6.152316726009349,
+        "upper_bound": 6.457610923753597
+      }
+    },
+    {
+      "id": "perf-iter-over-index/indexed/4096",
+      "mean_ns": 1993.2346623247283,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 1704.1182839117541,
+        "upper_bound": 2347.533885977485
+      }
+    },
+    {
+      "id": "perf-iter-over-index/iterator/32",
+      "mean_ns": 6.165939660843683,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 6.106171616733989,
+        "upper_bound": 6.257299262575173
+      }
+    },
+    {
+      "id": "perf-iter-over-index/iterator/4096",
+      "mean_ns": 1775.1995259001487,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 1708.119066461956,
+        "upper_bound": 1844.066486373054
+      }
+    },
+    {
+      "id": "perf-profile-first/kernel_only/32",
+      "mean_ns": 377.85193953589004,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 376.72878280294236,
+        "upper_bound": 379.16668203277834
+      }
+    },
+    {
+      "id": "perf-profile-first/kernel_only/4096",
+      "mean_ns": 50396.34441877239,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 50133.762481584796,
+        "upper_bound": 50696.556267564636
+      }
+    },
+    {
+      "id": "perf-profile-first/whole_pipeline/32",
+      "mean_ns": 406.5762299062763,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 405.2706490856549,
+        "upper_bound": 407.99290694939094
+      }
+    },
+    {
+      "id": "perf-profile-first/whole_pipeline/4096",
+      "mean_ns": 50740.20844025977,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 50582.27597415154,
+        "upper_bound": 50937.8355808959
+      }
+    },
+    {
+      "id": "perf-release-profile/checksum",
+      "mean_ns": 50020.6102805337,
+      "confidence_interval_ns": {
+        "confidence_level": 0.95,
+        "lower_bound": 49908.219543756546,
+        "upper_bound": 50136.87831197908
+      }
+    }
+  ],
+  "profiles": [
+    {
+      "size": 32768,
+      "rounds": 64,
+      "checksum": 15734552818405075728,
+      "setup_ns": 52800,
+      "samples_ns": [
+        1592300,
+        1598800,
+        1641100,
+        1589500,
+        1590100,
+        1585300,
+        1750900
+      ],
+      "profile": "release",
+      "binary_bytes": 156672,
+      "median_ns": 1592300,
+      "panic_probe": {
+        "exit_code": 101,
+        "drop_ran": true
+      }
+    },
+    {
+      "size": 32768,
+      "rounds": 64,
+      "checksum": 15734552818405075728,
+      "setup_ns": 63100,
+      "samples_ns": [
+        1617100,
+        1584200,
+        1586000,
+        1584500,
+        1622100,
+        1588700,
+        1587300
+      ],
+      "profile": "release-lto",
+      "binary_bytes": 158208,
+      "median_ns": 1587300,
+      "panic_probe": {
+        "exit_code": 101,
+        "drop_ran": true
+      }
+    },
+    {
+      "size": 32768,
+      "rounds": 64,
+      "checksum": 15734552818405075728,
+      "setup_ns": 45700,
+      "samples_ns": [
+        1615000,
+        1606900,
+        1584100,
+        1703500,
+        1640600,
+        1639600,
+        1629600
+      ],
+      "profile": "release-codegen",
+      "binary_bytes": 156672,
+      "median_ns": 1629600,
+      "panic_probe": {
+        "exit_code": 101,
+        "drop_ran": true
+      }
+    },
+    {
+      "size": 32768,
+      "rounds": 64,
+      "checksum": 15734552818405075728,
+      "setup_ns": 46900,
+      "samples_ns": [
+        1620700,
+        1600400,
+        1588300,
+        1585700,
+        1594900,
+        1609700,
+        1597800
+      ],
+      "profile": "release-tuned",
+      "binary_bytes": 138752,
+      "median_ns": 1597800,
+      "panic_probe": {
+        "exit_code": 3221226505,
+        "drop_ran": false
+      }
+    }
+  ],
+  "nightly_collect_into": "passed",
+  "rustc": "rustc 1.97.1 (8bab26f4f 2026-07-14)\nbinary: rustc\ncommit-hash: 8bab26f4f68e0e26f0bb7960be334d5b520ea452\ncommit-date: 2026-07-14\nhost: x86_64-pc-windows-msvc\nrelease: 1.97.1\nLLVM version: 22.1.6",
+  "base_revision": "b49ab595b872cba8ef2eb6e6855f3d0637743a2d",
+  "registered_rule_groups": [
+    "perf-ahash",
+    "perf-black-box-bench",
+    "perf-chain-avoid",
+    "perf-collect-into",
+    "perf-collect-once",
+    "perf-drain-reuse",
+    "perf-entry-api",
+    "perf-extend-batch",
+    "perf-io-buffering",
+    "perf-iter-lazy",
+    "perf-iter-over-index",
+    "perf-profile-first",
+    "perf-release-profile"
+  ],
+  "registered_benchmarks": [
+    "perf-ahash/ahash/integers/repeated/32",
+    "perf-ahash/ahash/integers/repeated/4096",
+    "perf-ahash/ahash/integers/unique/32",
+    "perf-ahash/ahash/integers/unique/4096",
+    "perf-ahash/ahash/strings/repeated/width128/32",
+    "perf-ahash/ahash/strings/repeated/width128/4096",
+    "perf-ahash/ahash/strings/repeated/width8/32",
+    "perf-ahash/ahash/strings/repeated/width8/4096",
+    "perf-ahash/ahash/strings/unique/width128/32",
+    "perf-ahash/ahash/strings/unique/width128/4096",
+    "perf-ahash/ahash/strings/unique/width8/32",
+    "perf-ahash/ahash/strings/unique/width8/4096",
+    "perf-ahash/fx/integers/repeated/32",
+    "perf-ahash/fx/integers/repeated/4096",
+    "perf-ahash/fx/integers/unique/32",
+    "perf-ahash/fx/integers/unique/4096",
+    "perf-ahash/fx/strings/repeated/width128/32",
+    "perf-ahash/fx/strings/repeated/width128/4096",
+    "perf-ahash/fx/strings/repeated/width8/32",
+    "perf-ahash/fx/strings/repeated/width8/4096",
+    "perf-ahash/fx/strings/unique/width128/32",
+    "perf-ahash/fx/strings/unique/width128/4096",
+    "perf-ahash/fx/strings/unique/width8/32",
+    "perf-ahash/fx/strings/unique/width8/4096",
+    "perf-ahash/std/integers/repeated/32",
+    "perf-ahash/std/integers/repeated/4096",
+    "perf-ahash/std/integers/unique/32",
+    "perf-ahash/std/integers/unique/4096",
+    "perf-ahash/std/strings/repeated/width128/32",
+    "perf-ahash/std/strings/repeated/width128/4096",
+    "perf-ahash/std/strings/repeated/width8/32",
+    "perf-ahash/std/strings/repeated/width8/4096",
+    "perf-ahash/std/strings/unique/width128/32",
+    "perf-ahash/std/strings/unique/width128/4096",
+    "perf-ahash/std/strings/unique/width8/32",
+    "perf-ahash/std/strings/unique/width8/4096",
+    "perf-black-box-bench/discarded_constant_input",
+    "perf-black-box-bench/opaque_input_and_output",
+    "perf-black-box-bench/opaque_input_returned_output",
+    "perf-chain-avoid/chain/32",
+    "perf-chain-avoid/chain/4096",
+    "perf-chain-avoid/separate/32",
+    "perf-chain-avoid/separate/4096",
+    "perf-collect-into/fresh/32",
+    "perf-collect-into/fresh/4096",
+    "perf-collect-into/stable-extend-reused/32",
+    "perf-collect-into/stable-extend-reused/4096",
+    "perf-collect-once/once/mixed-32",
+    "perf-collect-once/once/mixed-4096",
+    "perf-collect-once/once/none-32",
+    "perf-collect-once/once/none-4096",
+    "perf-collect-once/staged/mixed-32",
+    "perf-collect-once/staged/mixed-4096",
+    "perf-collect-once/staged/none-32",
+    "perf-collect-once/staged/none-4096",
+    "perf-drain-reuse/fresh/32",
+    "perf-drain-reuse/fresh/4096",
+    "perf-drain-reuse/reused/32",
+    "perf-drain-reuse/reused/4096",
+    "perf-entry-api/entry-repeated/32",
+    "perf-entry-api/entry-repeated/4096",
+    "perf-entry-api/entry-unique/32",
+    "perf-entry-api/entry-unique/4096",
+    "perf-entry-api/reference-repeated/32",
+    "perf-entry-api/reference-repeated/4096",
+    "perf-entry-api/reference-unique/32",
+    "perf-entry-api/reference-unique/4096",
+    "perf-extend-batch/extend/32",
+    "perf-extend-batch/extend/4096",
+    "perf-extend-batch/push/32",
+    "perf-extend-batch/push/4096",
+    "perf-io-buffering/read/buffered-1024/32",
+    "perf-io-buffering/read/buffered-1024/512",
+    "perf-io-buffering/read/buffered-8192/32",
+    "perf-io-buffering/read/buffered-8192/512",
+    "perf-io-buffering/read/unbuffered/32",
+    "perf-io-buffering/read/unbuffered/512",
+    "perf-io-buffering/write/buffered-1024/32",
+    "perf-io-buffering/write/buffered-1024/512",
+    "perf-io-buffering/write/buffered-8192/32",
+    "perf-io-buffering/write/buffered-8192/512",
+    "perf-io-buffering/write/unbuffered/32",
+    "perf-io-buffering/write/unbuffered/512",
+    "perf-iter-lazy/eager/absent-32",
+    "perf-iter-lazy/eager/absent-4096",
+    "perf-iter-lazy/eager/early-32",
+    "perf-iter-lazy/eager/early-4096",
+    "perf-iter-lazy/eager/late-32",
+    "perf-iter-lazy/eager/late-4096",
+    "perf-iter-lazy/lazy/absent-32",
+    "perf-iter-lazy/lazy/absent-4096",
+    "perf-iter-lazy/lazy/early-32",
+    "perf-iter-lazy/lazy/early-4096",
+    "perf-iter-lazy/lazy/late-32",
+    "perf-iter-lazy/lazy/late-4096",
+    "perf-iter-over-index/indexed/32",
+    "perf-iter-over-index/indexed/4096",
+    "perf-iter-over-index/iterator/32",
+    "perf-iter-over-index/iterator/4096",
+    "perf-profile-first/kernel_only/32",
+    "perf-profile-first/kernel_only/4096",
+    "perf-profile-first/whole_pipeline/32",
+    "perf-profile-first/whole_pipeline/4096",
+    "perf-release-profile/checksum"
+  ],
+  "measurement_started_ns": 1794251843623731400,
+  "nightly_rustc": "rustc 1.102.0-nightly (5b7b37aef 2026-11-08)\nbinary: rustc\ncommit-hash: 5b7b37aefcb5b2fba3c2392bc9065b9e4602d494\ncommit-date: 2026-11-08\nhost: x86_64-pc-windows-msvc\nrelease: 1.102.0-nightly\nLLVM version: 23.1.5",
+  "status": "passed"
+}

@@ -43,38 +43,53 @@ if let Some(value) = map.get("key") {
 }
 
 // Channel with proper handling
-match receiver.recv() {
-    Ok(msg) => handle(msg),
-    Err(_) => break,  // Channel closed
+loop {
+    match receiver.recv() {
+        Ok(msg) => handle(msg),
+        Err(_) => break,  // Channel closed
+    }
 }
 ```
 
 ## When unwrap() Is Acceptable
 
-```rust
-// 1. Tests - panics are expected failures
-#[test]
-fn test_parse() {
-    let result = parse("valid").unwrap();  // OK in tests
-    assert_eq!(result, expected);
-}
+In a test, a failed fixture expectation should fail that test:
 
-// 2. Const/static initialization (compile-time guaranteed)
-static REGEX: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"^\d+$").unwrap()  // Known-valid pattern
+```rust
+#[test]
+fn parses_known_integer_fixture() {
+    let result = "42".parse::<u32>().unwrap();
+    assert_eq!(result, 42);
+}
+```
+
+For a source-controlled invariant, explain its justification. Lazy initialization still runs at runtime; a literal input is not a compile-time validation guarantee.
+
+```rust
+use std::collections::HashMap;
+use std::sync::LazyLock;
+
+static RETRIES: LazyLock<u32> = LazyLock::new(|| {
+    "3".parse().expect("BUG: the retry count literal must be an unsigned integer")
 });
 
-// 3. After a check that guarantees success
-if map.contains_key("key") {
-    let value = map.get("key").unwrap();  // Just checked
+fn checked_lookup(map: &HashMap<String, u32>, key: &str) -> Option<u32> {
+    if map.contains_key(key) {
+        // No mutation can occur through this shared borrow between the checks.
+        Some(*map.get(key).unwrap())
+    } else {
+        None
+    }
 }
-// Better: use if-let or entry API instead
 
-// 4. Truly impossible cases with proof comment
-let last = vec.pop().unwrap();  
-// OK only if you just checked !vec.is_empty()
-// Better: use last() or pattern match
+fn main() {
+    let map = HashMap::from([("answer".to_owned(), 42)]);
+    assert_eq!(checked_lookup(&map, "answer"), Some(42));
+    assert_eq!(*RETRIES, 3);
+}
 ```
+
+For the lookup above, `map.get(key).copied()` expresses the same behavior without an extra lookup or `unwrap()`.
 
 ## Alternatives to unwrap()
 

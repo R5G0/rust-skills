@@ -1,0 +1,8 @@
+[package]
+name = "macro-consumer"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+checked-macros.workspace = true

@@ -11,37 +11,78 @@ Unit tests should isolate the code under test from external dependencies (databa
 ```toml
 # Cargo.toml
 [dev-dependencies]
-mockall = "0.12"
+mockall = "0.13"
 ```
 
-## Basic Usage
+## Good
 
+<!-- verify: compile -->
 ```rust
-use mockall::automock;
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct User {
+    id: u64,
+    name: String,
+}
 
-#[automock]
+#[cfg_attr(test, mockall::automock)]
 trait Database {
     fn get_user(&self, id: u64) -> Option<User>;
-    fn save_user(&self, user: &User) -> Result<(), Error>;
+    fn save_user(&self, user: &User) -> Result<(), String>;
+}
+
+struct UserService<D> {
+    database: D,
+}
+
+impl<D: Database> UserService<D> {
+    fn find_user(&self, id: u64) -> Option<User> {
+        self.database.get_user(id)
+    }
+
+    fn save_user(&self, user: &User) -> Result<(), String> {
+        self.database.save_user(user)
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use mockall::predicate::*;
-    
+    use mockall::predicate::eq;
+
     #[test]
-    fn test_get_user() {
-        let mut mock = MockDatabase::new();
-        
-        mock.expect_get_user()
+    fn find_user_queries_the_requested_id_once() {
+        let mut database = MockDatabase::new();
+        database.expect_get_user()
             .with(eq(42))
-            .returning(|_| Some(User { id: 42, name: "Alice".into() }));
-        
-        let service = UserService::new(mock);
-        let user = service.find_user(42);
-        
-        assert_eq!(user.unwrap().name, "Alice");
+            .times(1)
+            .returning(|id| Some(User { id, name: "Alice".to_owned() }));
+        let service = UserService { database };
+
+        let user = service.find_user(42).expect("mock returns user");
+
+        assert_eq!(user, User { id: 42, name: "Alice".to_owned() });
+        // Mockall checks the call count when service is dropped.
+    }
+
+    #[test]
+    fn find_user_preserves_a_missing_user_result() {
+        let mut database = MockDatabase::new();
+        database.expect_get_user().with(eq(99)).times(1).returning(|_| None);
+        let service = UserService { database };
+        assert_eq!(service.find_user(99), None);
+    }
+
+    #[test]
+    fn save_user_passes_the_user_and_propagates_database_errors() {
+        let user = User { id: 42, name: "Alice".to_owned() };
+        let mut database = MockDatabase::new();
+        database.expect_save_user()
+            .with(eq(user.clone()))
+            .times(1)
+            .returning(|_| Err("database unavailable".to_owned()));
+        let service = UserService { database };
+
+        assert_eq!(service.save_user(&user), Err("database unavailable".to_owned()));
     }
 }
 ```
@@ -134,11 +175,10 @@ mock.expect_count().returning(|| 42);
 mock.expect_double().returning(|x| x * 2);
 
 // Different values per call
+let mut values = [1, 2, 3].into_iter();
 mock.expect_next()
     .times(3)
-    .returning(|| 1)
-    .returning(|| 2)
-    .returning(|| 3);
+    .returning(move || values.next().expect("exactly three configured calls"));
 
 // Return owned values
 mock.expect_get_name()

@@ -4,7 +4,7 @@
 
 ## Why It Matters
 
-Async functions can't be called directly—they need a runtime to drive them. `#[tokio::test]` provides a Tokio runtime for your test, handling setup automatically. This is simpler than manually creating a runtime and essential for testing async code.
+Calling an async function creates a future; its body runs when that future is polled. Tokio-powered operations need a compatible runtime. `#[tokio::test]` constructs one and drives the test future automatically, avoiding repetitive runtime setup.
 
 ## Bad
 
@@ -29,50 +29,88 @@ fn test_async_function() {
 
 ## Good
 
+<!-- verify: compile -->
 ```rust
-#[tokio::test]
-async fn test_async_function() {
-    let result = fetch_data().await;
-    assert!(result.is_ok());
-}
+#[cfg(test)]
+mod tests {
+    async fn fetch_data(source: &[u8]) -> Result<Vec<u8>, &'static str> {
+        tokio::task::yield_now().await;
+        if source.is_empty() {
+            Err("empty source")
+        } else {
+            Ok(source.to_vec())
+        }
+    }
 
-#[tokio::test]
-async fn test_concurrent_operations() {
-    let (a, b) = tokio::join!(
-        fetch_user(1),
-        fetch_user(2),
-    );
-    assert!(a.is_ok());
-    assert!(b.is_ok());
+    async fn fetch_user(users: &[(u64, &str)], id: u64) -> Option<String> {
+        tokio::task::yield_now().await;
+        users.iter().find(|(user_id, _)| *user_id == id)
+            .map(|(_, name)| (*name).to_owned())
+    }
+
+    #[tokio::test]
+    async fn fetch_data_returns_contents_and_rejects_empty_input() {
+        assert_eq!(fetch_data(b"payload").await, Ok(b"payload".to_vec()));
+        assert_eq!(fetch_data(b"").await, Err("empty source"));
+    }
+
+    #[tokio::test]
+    async fn concurrent_user_queries_preserve_each_result() {
+        let users = [(1, "Alice"), (2, "Bob")];
+        let (first, second, missing) = tokio::join!(
+            fetch_user(&users, 1),
+            fetch_user(&users, 2),
+            fetch_user(&users, 99),
+        );
+        assert_eq!(first.as_deref(), Some("Alice"));
+        assert_eq!(second.as_deref(), Some("Bob"));
+        assert_eq!(missing, None);
+    }
 }
 ```
 
 ## Runtime Configuration
 
+The default flavor is `current_thread`, not `multi_thread`. The test macro needs
+Tokio's `macros` and runtime features. Selecting `multi_thread` additionally needs
+`rt-multi-thread`; `start_paused` and `advance` need `test-util` and `time`.
+`full` does not include `test-util`, so enable it explicitly for time-controlled
+tests, for example `tokio = { version = "1", features = ["full", "test-util"] }`.
+
+<!-- verify: compile -->
 ```rust
-// Multi-threaded runtime (default)
-#[tokio::test]
-async fn test_default_runtime() {
-    // Uses multi-thread runtime
-}
+#[cfg(test)]
+mod tests {
+    use std::time::Duration;
+    use tokio::runtime::{Handle, RuntimeFlavor};
+    use tokio::time::{Instant, advance};
 
-// Single-threaded (current_thread)
-#[tokio::test(flavor = "current_thread")]
-async fn test_single_threaded() {
-    // Simpler, deterministic
-}
+    // #[tokio::test] defaults to a current-thread runtime.
+    #[tokio::test]
+    async fn default_runtime_uses_the_current_thread() {
+        assert_eq!(Handle::current().runtime_flavor(), RuntimeFlavor::CurrentThread);
+    }
 
-// With specific thread count
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn test_with_workers() {
-    // Exactly 2 worker threads
-}
+    #[tokio::test(flavor = "current_thread")]
+    async fn explicit_current_thread_runtime_drives_spawned_tasks() {
+        let result = tokio::spawn(async { 21 * 2 }).await.expect("task completed");
+        assert_eq!(result, 42);
+        assert_eq!(Handle::current().runtime_flavor(), RuntimeFlavor::CurrentThread);
+    }
 
-// With time control
-#[tokio::test(start_paused = true)]
-async fn test_with_time_control() {
-    // Time starts paused for deterministic testing
-    tokio::time::advance(Duration::from_secs(60)).await;
+    // Requires Tokio's rt-multi-thread feature.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn explicitly_selected_runtime_is_multithreaded() {
+        assert_eq!(Handle::current().runtime_flavor(), RuntimeFlavor::MultiThread);
+    }
+
+    // Requires Tokio's test-util and time features; supported on current_thread.
+    #[tokio::test(start_paused = true)]
+    async fn paused_time_advances_by_the_requested_duration() {
+        let start = Instant::now();
+        advance(Duration::from_secs(60)).await;
+        assert_eq!(start.elapsed(), Duration::from_secs(60));
+    }
 }
 ```
 

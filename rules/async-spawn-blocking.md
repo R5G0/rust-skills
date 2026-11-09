@@ -25,53 +25,24 @@ async fn read_large_file(path: &Path) -> Vec<u8> {
 
 ## Good
 
+<!-- verify: compile -->
 ```rust
-use tokio::task;
-
-// GOOD: Offload CPU work to blocking pool
-async fn process_image(data: Vec<u8>) -> ProcessedImage {
-    task::spawn_blocking(move || {
-        let resized = resize_image(&data);
-        compress(resized)
-    })
-    .await
-    .expect("spawn_blocking failed")
+async fn sum_on_blocking_pool(data: Vec<u64>) -> Result<u64, tokio::task::JoinError> {
+    tokio::task::spawn_blocking(move || data.into_iter().sum()).await
 }
 
-// GOOD: Use async file I/O
-async fn read_large_file(path: &Path) -> tokio::io::Result<Vec<u8>> {
-    tokio::fs::read(path).await
-}
-
-// GOOD: Or spawn_blocking for unavoidable sync I/O
-async fn read_with_sync_lib(path: PathBuf) -> Vec<u8> {
-    task::spawn_blocking(move || {
-        sync_library::read_file(&path)
-    })
-    .await
-    .unwrap()
+#[tokio::main(flavor = "current_thread")]
+async fn main() -> Result<(), tokio::task::JoinError> {
+    assert_eq!(sum_on_blocking_pool(vec![1, 2, 3]).await?, 6);
+    Ok(())
 }
 ```
 
 ## What Counts as Blocking
 
-```rust
-// CPU-intensive operations
-- Cryptographic operations (hashing, encryption)
-- Image/video processing
-- Compression/decompression
-- Complex parsing
-- Mathematical computations
+CPU-intensive operations include cryptographic computation, image/video processing, compression, expensive parsing, and mathematical kernels. Blocking I/O includes `std::fs`, synchronous database and HTTP clients, and `std::thread::sleep`.
 
-// Blocking I/O
-- std::fs operations
-- Synchronous database drivers
-- Synchronous HTTP clients
-- Thread::sleep
-
-// Measure worst-case poll duration and executor latency under realistic load.
-// There is no universal microsecond threshold for moving work off a worker.
-```
+Measure worst-case poll duration and executor latency under realistic load. There is no universal microsecond threshold for moving work off a worker.
 
 ## Practical Examples
 

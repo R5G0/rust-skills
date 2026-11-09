@@ -4,17 +4,18 @@
 
 ## Why It Matters
 
-A typo in a cfg expression — `#[cfg(feature = "serde_")]` instead of `"serde"`, or `#[cfg(tokio_unstable)]` with no declaration — compiles silently and produces dead code or an always-disabled feature. The `unexpected_cfgs` lint (stabilized in Rust 1.80) flags any cfg name or value not known to the compiler. Cargo automatically teaches the compiler about your declared feature names; for custom cfgs (well-known ones like `tokio_unstable`, or your own) you must declare them via `check-cfg` in the `[lints.rust]` table. This catches bugs at compile time that would otherwise be invisible.
+A typo in a cfg expression — `#[cfg(feature = "serde_")]` instead of `"serde"`, or an undeclared custom cfg — can silently disable code when cfg checking is absent or its diagnostics are overlooked. The `unexpected_cfgs` lint (stabilized in Rust 1.80) flags names and values not known to the compiler. Cargo automatically registers declared feature names; declare custom names such as `tokio_unstable` via `check-cfg` in `[lints.rust]`, and make the resulting diagnostics fail CI.
 
 ## Bad
 
 ```rust
 // Typo: "serde_" will never match the "serde" feature.
-// Compiles with no warning — the block is silently dead.
+// Without enforcing cfg diagnostics, this disabled code can go unnoticed.
 #[cfg(feature = "serde_")]
-impl serde::Serialize for MyType {}
+#[derive(serde::Serialize)]
+pub struct MyType { pub name: String }
 
-// Custom cfg used without declaration — also silently ignored.
+// Custom cfg used without declaration: Cargo reports unexpected_cfgs.
 #[cfg(tokio_unstable)]
 pub fn experimental() {}
 ```
@@ -22,22 +23,30 @@ pub fn experimental() {}
 ## Good
 
 ```toml
-# Cargo.toml — declare custom cfgs in the lints table
+# Cargo.toml — declare the feature, optional dependency, and custom cfg names
+[dependencies]
+serde = { version = "1", optional = true, features = ["derive"] }
+
+[features]
+serde = ["dep:serde"]
+
 [lints.rust]
-unexpected_cfgs = { level = "warn", check-cfg = [
+unexpected_cfgs = { level = "deny", check-cfg = [
     'cfg(tokio_unstable)',
     'cfg(coverage_nightly)',
 ] }
 ```
 
 ```rust
-// Now "serde_" typo → compiler warning: unexpected `cfg` condition value
-// and tokio_unstable is a known cfg, so it compiles cleanly.
-#[cfg(feature = "serde")]      // correct
-impl serde::Serialize for MyType {}
+// The struct is checked in every build; optional derives are checked when enabled.
+#[derive(Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct MyType { pub name: String }
 
-#[cfg(tokio_unstable)]         // declared above — no warning
-pub fn experimental() {}
+#[cfg(tokio_unstable)]
+pub fn experimental() -> MyType {
+    MyType { name: "experimental".to_owned() }
+}
 ```
 
 ## Workspace Projects
@@ -59,8 +68,17 @@ workspace = true
 ## Notes
 
 - Feature names (`feature = "serde"`, `feature = "std"`) are registered automatically by Cargo — you do not need to list them in `check-cfg`.
+- Declaring a custom cfg name permits it; it does not enable that branch. Enable it explicitly when testing, and compile both enabled and disabled configurations. An erased branch is not evidence that its body compiles.
 - Values in `check-cfg` entries must be quoted cfg expressions: `'cfg(name)'` or `'cfg(name, values("v1", "v2"))'`.
 - The lint fires at `warn` level; promote to `deny` in CI, or set `[build] warnings = "deny"` (Cargo 1.97+), if you want hard failures.
+
+## Verified Project
+
+<!-- verify: fixture=cfg-check -->
+
+The [cfg-check fixture](../checks/fixtures/cfg-check/Cargo.toml) declares a `checked` feature and the custom `validation_mode` cfg with `unexpected_cfgs = "deny"`. Its [verifier](../checks/fixtures/cfg-check/verify_cfg.py) runs real tests in four configurations: default, all features, custom cfg enabled, and both enabled. It requires the branch-specific test names to execute, then compiles separate misspelled-feature and misspelled-custom-cfg callers and checks the exact `unexpected_cfgs` diagnostic and offending source line. The fixture uses no external dependencies; the serde example above illustrates a separate optional integration.
+
+Run `python checks/fixtures/cfg-check/verify_cfg.py` with Rust 1.97.1 installed. Results are written under the fixture's ignored `target/` directory.
 
 ## See Also
 

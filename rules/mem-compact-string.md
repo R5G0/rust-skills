@@ -94,7 +94,7 @@ use std::mem::size_of;
 // All 24 bytes, but different inline capacities
 assert_eq!(size_of::<String>(), 24);
 assert_eq!(size_of::<compact_str::CompactString>(), 24);
-assert_eq!(size_of::<smartstring::SmartString>(), 24);
+assert_eq!(size_of::<smartstring::SmartString<smartstring::LazyCompact>>(), 24);
 assert_eq!(size_of::<ecow::EcoString>(), 16);  // Even smaller!
 ```
 
@@ -129,8 +129,8 @@ fn transform(s: &str) -> String {
 }
 
 // ❌ Don't: API boundaries (prefer &str or String for interop)
-pub fn public_api(input: CompactString) { }  // Forces dependency
-pub fn public_api(input: impl Into<String>) { }  // Better
+pub fn compact_api(input: CompactString) { }  // Forces dependency
+pub fn public_api(input: impl Into<String>) { }  // Standard-type boundary
 ```
 
 ## Cargo.toml

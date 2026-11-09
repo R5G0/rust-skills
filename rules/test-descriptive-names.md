@@ -27,21 +27,26 @@ fn test_function() { ... }
 
 ## Good
 
+<!-- verify: compile -->
 ```rust
-#[test]
-fn parse_returns_error_for_empty_input() { ... }
+fn parse_port(input: &str) -> Result<u16, std::num::ParseIntError> {
+    input.parse()
+}
 
-#[test]
-fn parse_handles_unicode_characters() { ... }
+#[cfg(test)]
+mod tests {
+    use super::parse_port;
 
-#[test]
-fn user_creation_requires_valid_email() { ... }
+    #[test]
+    fn parse_port_rejects_empty_input() {
+        assert!(parse_port("").is_err());
+    }
 
-#[test]
-fn expired_token_is_rejected() { ... }
-
-// Failure output: "test parse_returns_error_for_empty_input ... FAILED"
-// Immediately know what broke!
+    #[test]
+    fn parse_port_accepts_the_largest_u16() {
+        assert_eq!(parse_port("65535"), Ok(u16::MAX));
+    }
+}
 ```
 
 ## Naming Patterns
@@ -134,6 +139,14 @@ mod tests {
 // tests::parsing::rejects_trailing_comma
 // tests::validation::requires_name_field
 ```
+
+## Verified Project
+
+<!-- verify: fixture=layouts -->
+
+See the real [validation fixture source](../checks/fixtures/layouts/flat-tool/tests/public_api.rs). Test names state concrete behavior, such as parse_port_rejects_empty_and_out_of_range_input. The workspace test command compiles and executes these named tests.
+
+Run from `checks/fixtures/layouts` with Rust 1.97.1: `cargo test --workspace --all-targets`, `cargo test --workspace --doc`, `cargo doc --workspace --no-deps`, `cargo fmt --all --check`, and `cargo clippy --workspace --all-targets -- -D warnings`.
 
 ## See Also
 

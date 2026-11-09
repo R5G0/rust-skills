@@ -98,6 +98,23 @@ impl MyType {
 }
 ```
 
+## Verified Example
+
+<!-- verify: compile -->
+```rust
+struct Message(String);
+impl Message {
+    fn as_str(&self) -> &str { &self.0 }
+    fn as_bytes(&self) -> &[u8] { self.0.as_bytes() }
+}
+fn main() {
+    let message = Message(String::from("hello"));
+    assert_eq!(message.as_str(), "hello");
+    assert_eq!(message.as_bytes(), b"hello");
+    assert_eq!(message.as_bytes().as_ptr(), message.0.as_ptr());
+}
+```
+
 ## See Also
 
 - [name-to-expensive](name-to-expensive.md) - `to_` prefix for expensive conversions

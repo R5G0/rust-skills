@@ -43,31 +43,32 @@ pub fn process_batch(&self, items: &[Item]) -> Result<Results, Error> {
 
 ## Good
 
+<!-- verify: compile -->
 ```rust
-/// Processes a batch of items.
+/// Parse a port number.
+///
+/// # Errors
+///
+/// Returns [`std::num::ParseIntError`] for non-numeric or out-of-range input.
 ///
 /// # Examples
 ///
 /// ```
-/// # use my_crate::{Processor, Config, Item, Error};
-/// # use std::sync::Arc;
-/// # let config = Config { batch_size: 100, timeout_ms: 5000, retry_count: 3 };
-/// # let processor = Processor::new(Arc::new(config));
-/// # let items = vec![Item::new("a"), Item::new("b"), Item::new("c")];
-/// let results = processor.process_batch(&items)?;
-/// assert!(results.all_succeeded());
-/// # Ok::<(), Error>(())
+/// # use layout_flat_tool::parse_port;
+/// let port = parse_port("8080")?;
+/// assert_eq!(port, 8080);
+/// # Ok::<(), std::num::ParseIntError>(())
 /// ```
-pub fn process_batch(&self, items: &[Item]) -> Result<Results, Error> {
-    // ...
+pub fn parse_port(input: &str) -> Result<u16, std::num::ParseIntError> {
+    input.parse()
 }
 ```
 
-Users see only:
+The rendered example shows the API call and assertion:
 
 ```rust
-let results = processor.process_batch(&items)?;
-assert!(results.all_succeeded());
+let port = parse_port("8080")?;
+assert_eq!(port, 8080);
 ```
 
 ## What to Hide
@@ -141,6 +142,14 @@ For examples that shouldn't run in tests:
 /// let magic = do_something_undefined();
 /// ```
 ```
+
+## Verified Project
+
+<!-- verify: fixture=layouts -->
+
+See the real [validation fixture source](../checks/fixtures/layouts/flat-tool/src/lib.rs). The parse_port doctest has a hidden import and typed hidden Ok return while leaving the API call and assertion visible. Rustdoc compiles and executes the complete example, including hidden lines.
+
+Run from `checks/fixtures/layouts` with Rust 1.97.1: `cargo test --workspace --all-targets`, `cargo test --workspace --doc`, `cargo doc --workspace --no-deps`, `cargo fmt --all --check`, and `cargo clippy --workspace --all-targets -- -D warnings`.
 
 ## See Also
 

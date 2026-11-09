@@ -39,16 +39,14 @@ for source in sources {
 ## How clone_from Works
 
 ```rust
-impl Clone for String {
-    fn clone(&self) -> Self {
-        // Always allocates new memory
-        String::from(self.as_str())
-    }
-    
+// Demonstrate the reuse strategy on a local wrapper; downstream crates cannot
+// implement the foreign Clone trait for the foreign String type.
+struct TextBuffer(String);
+impl Clone for TextBuffer {
+    fn clone(&self) -> Self { Self(self.0.clone()) }
     fn clone_from(&mut self, source: &Self) {
-        // Reuse existing capacity if possible
-        self.clear();
-        self.push_str(source);  // Only reallocates if capacity insufficient
+        self.0.clear();
+        self.0.push_str(&source.0);
     }
 }
 ```

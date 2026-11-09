@@ -12,7 +12,7 @@ non-compiling or unresolvable are skipped:
 Fragments (snippets that reference undefined domain symbols) are still emitted;
 the analyzer separates "only-resolution-errors" (fragments) from real bugs.
 """
-import re, json, pathlib
+import re, json, pathlib, hashlib
 
 HERE = pathlib.Path(__file__).resolve().parent
 RULES = (HERE.parent / "rules").resolve()
@@ -45,7 +45,9 @@ def is_candidate(block: str, section: str) -> bool:
 manifest = {}
 idx = 0
 for md in sorted(RULES.glob("*.md")):
-    lines = md.read_text(encoding="utf-8").splitlines()
+    markdown = md.read_text(encoding="utf-8")
+    source_sha256 = hashlib.sha256(markdown.encode()).hexdigest()
+    lines = markdown.splitlines()
     section = ""
     i = 0
     while i < len(lines):
@@ -61,21 +63,25 @@ for md in sorted(RULES.glob("*.md")):
             block = "\n".join(lines[start:j])
             if is_candidate(block, section):
                 name = f"{md.stem.replace('-', '_')}__{idx}"
-                has_main = re.search(r'\bfn\s+main\s*\(', block) is not None
-                has_inner_attr = "#![" in block
+                active_code = "\n".join(line for line in block.splitlines()
+                                        if not line.lstrip().startswith("//"))
+                has_main = re.search(r'\bfn\s+main\s*\(', active_code) is not None
+                has_inner_attr = "#![" in block or re.search(r"(?m)^\s*//!", block) is not None
                 # A block that defines a module is item-level: compile it at the
                 # crate root so `mod m { use super::* }` resolves correctly.
                 has_mod = re.search(r'(?m)^\s*(pub(\([^)]*\))?\s+)?mod\s+\w', block) is not None
+                has_tests = re.search(r'#\s*\[\s*(?:[a-z_]+::)*test(?:\s*\([^]]*\))?\s*\]', active_code) is not None
                 if has_main:
                     content = HEADER + block + "\n"
-                elif has_inner_attr or has_mod:
+                elif has_inner_attr or has_mod or has_tests:
                     content = HEADER + block + "\nfn main() {}\n"
                 else:
                     content = (HEADER +
                                "async fn __ex() -> Result<(), Box<dyn std::error::Error>> {\n" +
                                block + "\n;\nOk(())\n}\nfn main() {}\n")
                 (OUT / f"{name}.rs").write_text(content, encoding="utf-8")
-                manifest[name] = {"file": md.name, "line": start + 1, "section": section}
+                manifest[name] = {"file": md.name, "line": start + 1, "section": section,
+                                  "source_sha256": source_sha256}
             idx += 1
             i = j
         i += 1

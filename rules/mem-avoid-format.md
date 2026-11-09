@@ -86,7 +86,7 @@ fn good_log(writer: &mut impl Write, msg: &str, code: u32) {
 
 ```rust
 // Bad: Multiple allocations
-fn build_message(parts: &[&str]) -> String {
+fn build_message_repeated_format(parts: &[&str]) -> String {
     let mut result = String::new();
     for part in parts {
         result = format!("{}{}\n", result, part);  // Allocates each iteration!
@@ -95,7 +95,7 @@ fn build_message(parts: &[&str]) -> String {
 }
 
 // Good: Pre-allocate
-fn build_message(parts: &[&str]) -> String {
+fn build_message_preallocated(parts: &[&str]) -> String {
     let total_len: usize = parts.iter().map(|p| p.len() + 1).sum();
     let mut result = String::with_capacity(total_len);
     for part in parts {
@@ -105,9 +105,9 @@ fn build_message(parts: &[&str]) -> String {
     result
 }
 
-// Good: Use join
-fn build_message(parts: &[&str]) -> String {
-    parts.join("\n")
+// Alternative: join alone omits the final newline, so preserve it explicitly.
+fn build_message_joined(parts: &[&str]) -> String {
+    if parts.is_empty() { String::new() } else { parts.join("\n") + "\n" }
 }
 ```
 

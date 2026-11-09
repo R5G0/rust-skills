@@ -12,7 +12,11 @@ Clippy's correctness lints catch code that is outright wrong - logic errors, und
 // At the top of lib.rs or main.rs
 #![deny(clippy::correctness)]
 
-// Or in Cargo.toml for workspace-wide
+```
+
+Or in Cargo.toml:
+
+```toml
 [lints.clippy]
 correctness = "deny"
 ```
@@ -20,8 +24,8 @@ correctness = "deny"
 ## What It Catches
 
 ```rust
-// Infinite loop (iter::repeat without take)
-for x in std::iter::repeat(1) {  // ERROR: infinite iterator
+// Infinite iterator consumed without a terminating condition
+for x in std::iter::repeat(1) {  // Potential infinite_loop/infinite_iter lint, depending on context
     println!("{}", x);
 }
 
@@ -58,6 +62,8 @@ let re = Regex::new("[");  // Invalid regex
 
 // iter_next_loop - using .next() in for loop incorrectly
 for x in iter.next() {  // Should be: for x in iter
+    println!("{x}");
+}
 
 // never_loop - loop that never actually loops
 loop {

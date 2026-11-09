@@ -1,10 +1,10 @@
 # perf-chain-avoid
 
-> Avoid chain in hot loops
+> Measure chained iteration before rewriting a hot loop
 
 ## Why It Matters
 
-`Iterator::chain()` adds overhead for checking which iterator is active on every `.next()` call. In hot loops, this branch prediction overhead can impact performance. For performance-critical code, prefer single iterators or pre-combined collections.
+`Iterator::chain()` combines two iterators while preserving order and lazy evaluation. Its state transitions can affect a hot loop, but specialization, inlining, and vectorization determine the actual generated code. Separate loops can be worth measuring; eagerly combining collections also adds work and can change evaluation behavior.
 
 ## Bad
 
@@ -74,7 +74,7 @@ fn collect_all(a: Vec<i32>, b: Vec<i32>) -> Vec<i32> {
 }
 
 // Lazy evaluation with short-circuit
-fn find_in_either(a: &[Item], b: &[Item], target: i32) -> Option<&Item> {
+fn find_in_either<'a>(a: &'a [Item], b: &'a [Item], target: i32) -> Option<&'a Item> {
     a.iter().chain(b.iter()).find(|x| x.id == target)
 }
 
@@ -124,12 +124,19 @@ for item in all.iter().flat_map(|slice| slice.iter()) {
 | Pattern | Per-Item Overhead |
 |---------|-------------------|
 | Single iterator | None |
-| `chain(a, b)` | 1 branch per item |
-| `chain(a, b, c)` | 2 branches per item |
-| Nested chains | Compounds |
-| Separate loops | None (but code duplication) |
+| `chain(a, b)` | Iterator state transitions; optimized cost varies |
+| Nested chains | Measure the optimized loop rather than counting source branches |
+| Separate loops | Avoids chained state, but may increase code size |
+
+## Verified Project
+
+<!-- verify: fixture=performance -->
+
+See the [executable implementations, regression tests, and benchmarks](../perf-validation/README.md) for this rule and its recorded measurement limits.
 
 ## See Also
+
+The [sum and separator regression tests](../perf-validation/tests/iterators.rs) check equivalent results. [Criterion cases](../perf-validation/benches/cases/iterators.rs) measure chained and separate loops with the same inputs; the source-level table is not an assembly guarantee.
 
 - [perf-iter-over-index](./perf-iter-over-index.md) - Prefer iterators
 - [perf-extend-batch](./perf-extend-batch.md) - Batch insertions

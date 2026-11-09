@@ -23,7 +23,7 @@ metadata:
 
 # Rust Best Practices
 
-Comprehensive guide for writing high-quality, idiomatic, and highly optimized Rust code. Contains 284 rules across 26 categories, prioritized by impact to guide LLMs in code generation and refactoring. Examples checked with Rust 1.97.1 (2024 edition); respect each project's MSRV.
+Comprehensive guide for writing high-quality, idiomatic, and highly optimized Rust code. Contains 284 rules across 26 categories, prioritized by impact to guide LLMs in code generation and refactoring. Each rule has a positive example or real project fixture checked with Rust 1.97.1 (2024 edition); supplementary contextual fragments have separate diagnostics. See [validation scope and evidence](checks/README.md), and respect each project's MSRV.
 
 ## When to Apply
 
@@ -197,9 +197,9 @@ Reference these guidelines when:
 - [`opt-inline-never-cold`](rules/opt-inline-never-cold.md) - Use `#[inline(never)]` and `#[cold]` for error paths and rarely-executed code
 - [`opt-cold-unlikely`](rules/opt-cold-unlikely.md) - Mark unlikely code paths with `#[cold]` to help compiler optimization
 - [`opt-likely-hint`](rules/opt-likely-hint.md) - Add branch hints only for measured hot paths; distinguish stable cold hints from nightly intrinsics
-- [`opt-lto-release`](rules/opt-lto-release.md) - Enable LTO in release builds
-- [`opt-codegen-units`](rules/opt-codegen-units.md) - Set `codegen-units = 1` for maximum optimization in release builds
-- [`opt-pgo-profile`](rules/opt-pgo-profile.md) - Use Profile-Guided Optimization (PGO) for maximum performance
+- [`opt-lto-release`](rules/opt-lto-release.md) - Measure LTO in release builds before enabling it
+- [`opt-codegen-units`](rules/opt-codegen-units.md) - Measure fewer codegen units against runtime performance and build cost
+- [`opt-pgo-profile`](rules/opt-pgo-profile.md) - Train PGO with representative workloads and validate the optimized build
 - [`opt-target-cpu`](rules/opt-target-cpu.md) - Target only CPU features guaranteed by the deployment fleet; measure before raising the baseline
 - [`opt-bounds-check`](rules/opt-bounds-check.md) - Use iterators and patterns that eliminate bounds checks in hot paths
 - [`opt-simd-portable`](rules/opt-simd-portable.md) - Use portable SIMD for vectorized operations across architectures
@@ -371,7 +371,7 @@ Reference these guidelines when:
 - [`perf-entry-api`](rules/perf-entry-api.md) - Use entry API for map insert-or-update
 - [`perf-drain-reuse`](rules/perf-drain-reuse.md) - Use drain to reuse allocations
 - [`perf-extend-batch`](rules/perf-extend-batch.md) - Use extend for batch insertions
-- [`perf-chain-avoid`](rules/perf-chain-avoid.md) - Avoid chain in hot loops
+- [`perf-chain-avoid`](rules/perf-chain-avoid.md) - Measure chained iteration before rewriting a hot loop
 - [`perf-collect-into`](rules/perf-collect-into.md) - Use collect_into for reusing containers
 - [`perf-black-box-bench`](rules/perf-black-box-bench.md) - Use black_box in benchmarks
 - [`perf-release-profile`](rules/perf-release-profile.md) - Optimize release profile settings

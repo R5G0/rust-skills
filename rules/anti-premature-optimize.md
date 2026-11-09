@@ -37,30 +37,24 @@ struct MyVec<T> {
 
 ## Good
 
+<!-- verify: compile -->
 ```rust
-// Simple, idiomatic - let compiler optimize
-fn sum(data: &[i32]) -> i32 {
-    data.iter().sum()
+use std::collections::HashMap;
+
+fn word_counts(text: &str) -> HashMap<&str, usize> {
+    let mut counts = HashMap::new();
+    for word in text.split_whitespace() {
+        *counts.entry(word).or_insert(0) += 1;
+    }
+    counts
 }
 
-// Profile, then optimize if needed
-fn sum_optimized(data: &[i32]) -> i32 {
-    // After profiling showed this is a bottleneck,
-    // we measured that manual SIMD gives 3x speedup
-    #[cfg(target_arch = "x86_64")]
-    {
-        // a hand-written SIMD path would go here (measured ~3x faster);
-        // fall back to the iterator version as a placeholder
-        data.iter().sum()
-    }
-    #[cfg(not(target_arch = "x86_64"))]
-    {
-        data.iter().sum()
-    }
+fn main() {
+    // Keep this simple baseline until a representative profile justifies a change.
+    let counts = word_counts("red blue red");
+    assert_eq!(counts.get("red"), Some(&2));
+    assert_eq!(counts.get("blue"), Some(&1));
 }
-
-// Use standard library - it's well-optimized
-let cache: HashMap<String, Result> = HashMap::new();
 ```
 
 ## Profiling Workflow
@@ -94,18 +88,16 @@ cargo bench
 
 ## When to Optimize
 
+Keep a simple reference implementation, identify a hot path with representative profiling, then compare a concrete candidate on the same input. Record actual measurements with their workload and build settings; do not claim a speedup from an optimization label alone.
+
 ```rust
-// AFTER profiling shows this is 40% of runtime
-#[inline]
-fn hot_function(data: &[u8]) -> u64 {
-    // Optimized implementation justified by benchmarks
+fn checksum_reference(data: &[u8]) -> u64 {
+    data.iter().map(|&byte| u64::from(byte)).sum()
 }
 
-// Clear, measurable benefit documented
-/// Pre-allocated buffer for repeated formatting.
-/// Benchmarks show 3x speedup for >1000 calls/sec workloads.
-struct FormatterPool {
-    buffers: Vec<String>,
+fn main() {
+    assert_eq!(checksum_reference(&[1, 2, 3]), 6);
+    assert_eq!(checksum_reference(&[]), 0);
 }
 ```
 

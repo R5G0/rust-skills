@@ -29,65 +29,47 @@ Caller has no chance to recover or provide a fallback.
 
 ## Good
 
+<!-- verify: compile -->
 ```rust
-use thiserror::Error;
-
-#[derive(Error, Debug)]
-enum ConfigError {
-    #[error("Failed to read config file: {0}")]
-    Io(#[from] std::io::Error),
-    #[error("Invalid config format: {0}")]
-    Parse(#[from] serde_json::Error),
+#[derive(Debug, PartialEq, Eq)]
+enum DivideError {
+    ZeroDivisor,
+    Overflow,
 }
 
-fn parse_config(path: &str) -> Result<Config, ConfigError> {
-    let content = std::fs::read_to_string(path)?;
-    let config = serde_json::from_str(&content)?;
-    Ok(config)
-}
-
-fn divide(a: i32, b: i32) -> Result<i32, &'static str> {
-    if b == 0 {
-        return Err("Division by zero");
+fn divide(left: i32, right: i32) -> Result<i32, DivideError> {
+    if right == 0 {
+        return Err(DivideError::ZeroDivisor);
     }
-    Ok(a / b)
+    left.checked_div(right).ok_or(DivideError::Overflow)
 }
 
-// Caller decides how to handle
-match parse_config("app.json") {
-    Ok(config) => run_app(config),
-    Err(e) => {
-        eprintln!("Using default config: {}", e);
-        run_app(Config::default())
-    }
+fn main() {
+    assert_eq!(divide(12, 3), Ok(4));
+    assert_eq!(divide(12, 0), Err(DivideError::ZeroDivisor));
+    // MIN / -1 also panics with ordinary signed division, even in release mode.
+    assert_eq!(divide(i32::MIN, -1), Err(DivideError::Overflow));
 }
 ```
 
 ## When Panic IS Appropriate
 
+An internal invariant violation can justify a panic with context. Missing files, invalid user input, and malformed configuration remain ordinary errors even when startup cannot continue; report them at the application boundary.
+
 ```rust
-// 1. Bug in the program (invariant violation)
-fn get_cached_value(&self, key: &str) -> &Value {
-    self.cache.get(key).expect("BUG: key was verified to exist")
+use std::collections::HashMap;
+
+struct Cache { entries: HashMap<String, u32> }
+
+impl Cache {
+    fn get_known_key(&self, key: &str) -> u32 {
+        *self.entries.get(key).expect("BUG: caller verified this cache key exists")
+    }
 }
 
-// 2. Setup/initialization that can't reasonably fail
 fn main() {
-    let config = Config::load().expect("Failed to load required config");
-    // Can't run without config, panic is reasonable
-}
-
-// 3. Tests
-#[test]
-fn test_parse() {
-    let result = parse("valid input").unwrap(); // unwrap OK in tests
-    assert_eq!(result, expected);
-}
-
-// 4. Examples and prototypes
-fn main() {
-    // Quick prototype, panic is fine
-    let data = fetch_data().unwrap();
+    let cache = Cache { entries: HashMap::from([("answer".into(), 42)]) };
+    assert_eq!(cache.get_known_key("answer"), 42);
 }
 ```
 

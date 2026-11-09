@@ -1,10 +1,10 @@
 # opt-codegen-units
 
-> Set `codegen-units = 1` for maximum optimization in release builds
+> Measure fewer codegen units against runtime performance and build cost
 
 ## Why It Matters
 
-By default, Cargo splits code into multiple codegen units for parallel compilation. This speeds up builds but prevents some cross-unit optimizations. Setting `codegen-units = 1` allows LLVM to optimize across the entire crate, potentially improving runtime performance by 5-20% at the cost of slower builds.
+Cargo can split a crate into multiple codegen units for parallel compilation. Fewer units change optimization visibility, build parallelism, and memory use; their interaction with local LTO also matters. A single unit is a candidate to measure, not a guaranteed runtime improvement. Use the project's workload and compiler to assess the tradeoff.
 
 ## Bad
 
@@ -29,9 +29,9 @@ opt-level = 3      # Maximum optimization
 
 | Codegen Units | Compile Time | Runtime Performance | Memory Use |
 |---------------|--------------|---------------------|------------|
-| 16 (default)  | Faster       | Baseline            | Lower      |
-| 4-8           | Moderate     | Slightly better     | Moderate   |
-| 1             | Slower       | Best                | Higher     |
+| 16 (release default) | Baseline | Measure | Measure |
+| 4-8 | Can reduce build parallelism | Measure | Measure |
+| 1 | Can reduce build parallelism further | Measure; not necessarily fastest | Measure |
 
 ## How It Works
 
@@ -57,7 +57,7 @@ opt-level = 3      # Maximum optimization
 opt-level = 3
 lto = "fat"
 codegen-units = 1
-panic = "abort"      # Smaller binary, slight perf gain
+panic = "abort"      # Changes failure behavior: no unwinding or panic cleanup
 strip = true         # Smaller binary
 
 [profile.release-with-debug]
@@ -76,12 +76,12 @@ inherits = "release"
 ```bash
 # Default release build (fast compile)
 cargo build --release
-# Time: ~30s
+# Measure the actual clean/incremental build cost.
 
 # Optimized release build (slow compile, fast runtime)
 # With codegen-units = 1, lto = "fat"
 cargo build --release
-# Time: ~2-5min, but potentially 10-20% faster binary
+# Measure runtime separately; do not assume a fixed speedup.
 ```
 
 ## Per-Profile Configuration
@@ -134,6 +134,12 @@ ls -lh target/release/my_binary
 # Profile runtime
 perf stat ./target/release/my_binary
 ```
+
+## Verified Project
+
+<!-- verify: fixture=optimization -->
+
+The [real optimization project](../checks/fixtures/optimization/Cargo.toml) compiles cold-path code and valid release profiles. Its tests exercise success and error behavior. Treat optimizer settings as measurement candidates rather than a guaranteed speedup.
 
 ## See Also
 

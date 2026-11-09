@@ -25,26 +25,33 @@ fn test_panic_manual() {
 
 ## Good
 
+<!-- verify: compile -->
 ```rust
-#[test]
-#[should_panic]
-fn divide_by_zero_panics() {
-    divide(1, 0);  // Test passes when this panics
+fn divide(dividend: i32, divisor: i32) -> i32 {
+    assert_ne!(divisor, 0, "division by zero");
+    dividend / divisor
 }
 
-// With expected message
-#[test]
-#[should_panic(expected = "division by zero")]
-fn divide_by_zero_panics_with_message() {
-    divide(1, 0);  // Panics with "division by zero"
-}
+#[cfg(test)]
+mod tests {
+    use super::divide;
 
-// Partial message match
-#[test]
-#[should_panic(expected = "index out of bounds")]
-fn index_panic_contains_message() {
-    let v = vec![1, 2, 3];
-    let _ = v[100];  // Message contains "index out of bounds"
+    #[test]
+    #[should_panic]
+    fn divide_by_zero_panics() {
+        divide(1, 0);
+    }
+
+    #[test]
+    #[should_panic(expected = "division by zero")]
+    fn divide_by_zero_panics_with_documented_message() {
+        divide(1, 0);
+    }
+
+    #[test]
+    fn nonzero_divisor_returns_the_quotient() {
+        assert_eq!(divide(12, 3), 4);
+    }
 }
 ```
 
@@ -109,17 +116,26 @@ fn invalid_input_returns_error() {
 
 ## Combining with Result
 
+A test marked `#[should_panic]` must return `()`, not `Result`. If setup is
+fallible, resolve its result before the operation expected to panic. Separate
+setup errors from the expected panic so an unrelated setup failure cannot make
+the test pass.
+
 ```rust
+fn parse_dividend(input: &str) -> Result<i32, std::num::ParseIntError> {
+    input.parse()
+}
+
+fn divide(dividend: i32, divisor: i32) -> i32 {
+    assert_ne!(divisor, 0, "division by zero");
+    dividend / divisor
+}
+
 #[test]
-#[should_panic]
-fn test_panics() -> Result<(), Error> {
-    // Can combine with Result for setup
-    let data = setup_test_data()?;
-    
-    // This should panic
-    process_invalid(&data);
-    
-    Ok(())  // Never reached
+#[should_panic(expected = "division by zero")]
+fn parsed_dividend_panics_for_zero_divisor() {
+    let dividend = parse_dividend("12").expect("valid literal for test setup");
+    divide(dividend, 0);
 }
 ```
 

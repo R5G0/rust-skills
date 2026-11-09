@@ -99,9 +99,7 @@ fn transform_batches(batches: &[Vec<RawData>]) -> Vec<ProcessedData> {
     
     for batch in batches {
         temp.clear();
-        batch.iter()
-            .map(ProcessedData::from)
-            .collect_into(&mut temp);
+        temp.extend(batch.iter().map(ProcessedData::from));
         
         // Process temp, append to results
         all_results.extend(temp.drain(..).filter(|p| p.is_valid()));
@@ -116,7 +114,9 @@ fn transform_batches(batches: &[Vec<RawData>]) -> Vec<ProcessedData> {
 `collect_into()` works with any type implementing `Extend`:
 
 ```rust
-use std::collections::{HashSet, HashMap, VecDeque};
+#![feature(iter_collect_into)]
+
+use std::collections::{HashSet, VecDeque};
 
 let mut vec = Vec::new();
 let mut set = HashSet::new();
@@ -131,9 +131,15 @@ let mut deque = VecDeque::new();
 
 | Method | Allocation | Buffer Reuse |
 |--------|------------|--------------|
-| `.collect()` | New each time | No |
-| `.collect_into(&mut buf)` | Reuses buffer | Yes |
-| `buf.extend(iter)` | Reuses buffer | Yes |
+| `.collect()` | Builds a collection; allocation/reuse depends on iterator and destination type | Not explicitly controlled |
+| `.collect_into(&mut buf)` | Can retain existing capacity; may grow | Yes, nightly |
+| `buf.extend(iter)` | Can retain existing capacity; may grow | Yes, stable |
+
+## Verified Project
+
+<!-- verify: fixture=performance -->
+
+[Stable tests](../perf-validation/tests/collections.rs) verify repeated batches and retained capacity; the [nightly example](../perf-validation/examples/collect_into_nightly.rs) calls the actual unstable API. The Criterion group measures the stable `clear` + `extend` alternative and labels it accordingly. Both `extend` and `collect_into` append; call `clear()` first only when replacement is the intended contract. The caller's toolchain/MSRV determines which API is available.
 
 ## See Also
 

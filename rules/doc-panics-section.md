@@ -24,41 +24,21 @@ pub fn divide(a: i32, b: i32) -> i32 {
 
 ## Good
 
+<!-- verify: compile -->
 ```rust
-/// Returns the element at the given index.
+/// Divide two integers.
 ///
 /// # Panics
 ///
-/// Panics if `index` is out of bounds (i.e., `index >= self.len()`).
-///
-/// # Examples
-///
-/// ```
-/// let v = vec![1, 2, 3];
-/// assert_eq!(v.get(1), &2);
-/// ```
-pub fn get(&self, index: usize) -> &T {
-    &self.data[index]
-}
-
-/// Divides two numbers.
-///
-/// # Panics
-///
-/// Panics if `divisor` is zero.
-///
-/// For a non-panicking version, use [`checked_divide`].
+/// Panics if `divisor` is zero or dividing [`i32::MIN`] by `-1` overflows.
+/// For a non-panicking alternative, use [`checked_divide`].
 pub fn divide(dividend: i32, divisor: i32) -> i32 {
     dividend / divisor
 }
 
-/// Divides two numbers, returning `None` if the divisor is zero.
+/// Divide without panicking; return `None` for zero or signed overflow.
 pub fn checked_divide(dividend: i32, divisor: i32) -> Option<i32> {
-    if divisor == 0 {
-        None
-    } else {
-        Some(dividend / divisor)
-    }
+    dividend.checked_div(divisor)
 }
 ```
 
@@ -120,6 +100,14 @@ When documenting a panicking function, point to safe alternatives:
 ///
 /// For a non-panicking version, use [`get`] which returns `Option<&T>`.
 ```
+
+## Verified Project
+
+<!-- verify: fixture=layouts -->
+
+See the real [validation fixture source](../checks/fixtures/layouts/flat-tool/src/lib.rs). The divide function documents both zero division and signed overflow. Public-API tests exercise both documented panic conditions.
+
+Run from `checks/fixtures/layouts` with Rust 1.97.1: `cargo test --workspace --all-targets`, `cargo test --workspace --doc`, `cargo doc --workspace --no-deps`, `cargo fmt --all --check`, and `cargo clippy --workspace --all-targets -- -D warnings`.
 
 ## See Also
 

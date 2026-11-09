@@ -55,14 +55,14 @@ Same applies to `&mut`:
 
 ```rust
 // Bad
-fn double(numbers: &mut Vec<i32>) {
+fn double_vec(numbers: &mut Vec<i32>) {
     for n in numbers.iter_mut() {
         *n *= 2;
     }
 }
 
 // Good
-fn double(numbers: &mut [i32]) {
+fn double_slice(numbers: &mut [i32]) {
     for n in numbers.iter_mut() {
         *n *= 2;
     }

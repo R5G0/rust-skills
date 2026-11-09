@@ -24,7 +24,7 @@ HERE = pathlib.Path(__file__).resolve().parent
 manifest = json.loads((HERE / "manifest.json").read_text())
 
 RES_CODES = {"E0432","E0433","E0412","E0425","E0405","E0531","E0422",
-             "E0423","E0573","E0463","E0583","E0561","E0658"}
+             "E0423","E0573","E0463","E0583"}
 RES_PREFIXES = ("cannot find","unresolved import","failed to resolve",
                 "use of undeclared","cannot determine","can't find crate",
                 "maybe a missing crate","unresolved module")

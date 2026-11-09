@@ -130,6 +130,21 @@ if let Some(v) = opt.as_mut() {
 }
 ```
 
+## Verified Example
+
+<!-- verify: compile -->
+```rust
+use std::collections::HashMap;
+
+fn find_user<'a>(users: &'a HashMap<u64, String>, id: u64) -> Option<&'a str> { users.get(&id).map(String::as_str) }
+fn main() {
+    let users = HashMap::from([(7, String::from("Ada"))]);
+    assert_eq!(find_user(&users, 7), Some("Ada"));
+    assert_eq!(find_user(&users, 8), None);
+    assert_eq!(find_user(&users, 8).unwrap_or("Unknown"), "Unknown");
+}
+```
+
 ## See Also
 
 - [type-result-fallible](./type-result-fallible.md) - Result for errors

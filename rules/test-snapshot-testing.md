@@ -35,39 +35,32 @@ fn test_config_serialization() {
 insta = { version = "1", features = ["json", "yaml"] }
 ```
 
+<!-- verify: compile -->
 ```rust
-use insta::assert_debug_snapshot;
-use insta::assert_json_snapshot;
-
-#[test]
-fn test_render_error() {
-    let err = AppError::NotFound { id: 42 };
-    // On first run: creates snapshots/test_render_error.snap
-    // On subsequent runs: diffs against the saved snapshot
-    assert_debug_snapshot!(err);
+fn render_report(names: &[&str]) -> String {
+    format!("users: {}\n{}", names.len(), names.join("\n"))
 }
 
-#[test]
-fn test_config_serialization() {
-    let config = Config::default();
-    // Snapshot stored as pretty-printed JSON for easy review
-    assert_json_snapshot!(config);
-}
+#[cfg(test)]
+mod tests {
+    use super::render_report;
 
-#[test]
-fn test_cli_output() {
-    let output = run_cli(&["--help"]);
-    // Named snapshot for clarity
-    assert_debug_snapshot!("cli_help_output", output);
+    #[test]
+    fn user_report_keeps_its_multiline_layout() {
+        insta::assert_snapshot!(render_report(&["Ada", "Grace"]), @"users: 2\nAda\nGrace");
+    }
 }
 ```
 
 ## Workflow
 
+The example above uses an inline snapshot whose approved output is reviewed in
+the source. For snapshots stored in separate files:
+
 1. Run tests for the first time: `cargo test` — insta creates `.snap.new` files.
 2. Review and accept: `cargo insta review` — interactive diff; press `a` to accept.
 3. Commit the `.snap` files alongside your code changes.
-4. In CI, run `cargo test` and `cargo insta test --check` (or set `INSTA_UPDATE=unseen`) to fail if any snapshot is new or changed without being committed.
+4. In CI, use `INSTA_UPDATE=no cargo test` to reject new or changed snapshots. `INSTA_UPDATE=unseen` accepts previously unseen snapshots, so it is not a strict approval gate.
 
 ```bash
 # CI: fail on any unapproved snapshots

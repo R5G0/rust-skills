@@ -34,36 +34,26 @@ fn greet(name: &str) -> String {
 
 ## Good
 
+<!-- verify: compile -->
 ```rust
 use std::fmt::Write;
 
-// Reuse buffer across iterations
-fn log_events(events: &[Event]) {
+fn format_events(events: &[(&str, &str)], output: &mut String) -> std::fmt::Result {
+    output.clear();
+    for (level, message) in events {
+        writeln!(output, "[{level}] {message}")?;
+    }
+    Ok(())
+}
+
+fn main() -> std::fmt::Result {
     let mut buffer = String::with_capacity(256);
-    for event in events {
-        buffer.clear();
-        write!(buffer, "[{}] {}: {}", event.level, event.source, event.message).unwrap();
-        logger.log(&buffer);
-    }
-}
-
-// Build incrementally in single buffer
-fn build_url(base: &str, path: &str, params: &[(&str, &str)]) -> String {
-    let mut url = String::with_capacity(base.len() + path.len() + params.len() * 20);
-    url.push_str(base);
-    url.push_str(path);
-    for (key, value) in params {
-        write!(url, "{}={}&", key, value).unwrap();
-    }
-    url
-}
-
-// For truly hot paths, avoid allocation entirely
-fn greet_to_buf(name: &str, buffer: &mut String) {
-    buffer.clear();
-    buffer.push_str("Hello, ");
-    buffer.push_str(name);
-    buffer.push('!');
+    format_events(&[("INFO", "ready"), ("WARN", "retry")], &mut buffer)?;
+    assert_eq!(buffer, "[INFO] ready\n[WARN] retry\n");
+    format_events(&[("INFO", "done")], &mut buffer)?;
+    assert_eq!(buffer, "[INFO] done\n");
+    assert!(buffer.capacity() >= 256);
+    Ok(())
 }
 ```
 
@@ -79,14 +69,16 @@ fn greet_to_buf(name: &str, buffer: &mut String) {
 ## When format! Is Fine
 
 ```rust
-// One-time initialization
-let config_path = format!("{}/config.toml", home_dir);
+fn reject(input: &str) -> Result<(), String> {
+    Err(format!("invalid input: {input}"))
+}
 
-// Error messages (not hot path)
-return Err(format!("invalid input: {}", input));
-
-// Debug output
-println!("Debug: {:?}", value);
+fn main() {
+    let home_dir = "/example";
+    let config_path = format!("{home_dir}/config.toml");
+    assert_eq!(config_path, "/example/config.toml");
+    assert_eq!(reject("bad"), Err("invalid input: bad".into()));
+}
 ```
 
 ## Pattern: Formatter Buffer Pool

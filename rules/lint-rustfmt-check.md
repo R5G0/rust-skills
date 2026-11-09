@@ -50,11 +50,9 @@ Create `rustfmt.toml` for custom settings:
 
 ```toml
 # rustfmt.toml
-edition = "2021"
+edition = "2024"
 max_width = 100
 use_small_heuristics = "Max"
-imports_granularity = "Module"
-group_imports = "StdExternalCrate"
 reorder_imports = true
 ```
 
@@ -101,6 +99,7 @@ In `rustfmt.toml`:
 
 ```toml
 # Skip generated files
+# Nightly rustfmt only: ignore is unstable.
 ignore = [
     "src/generated/*",
     "build.rs",
@@ -149,6 +148,14 @@ Most IDEs format on save. Configure to use project `rustfmt.toml`:
   "rust-analyzer.rustfmt.extraArgs": ["--config-path", "./rustfmt.toml"]
 }
 ```
+
+## Verified Project
+
+<!-- verify: fixture=layouts -->
+
+See the real [validation fixture source](../checks/fixtures/layouts/rustfmt.toml). The stable formatter configuration is applied to every workspace source file. The gate runs cargo fmt --all --check as well as compiling the sources.
+
+Run from `checks/fixtures/layouts` with Rust 1.97.1: `cargo test --workspace --all-targets`, `cargo test --workspace --doc`, `cargo doc --workspace --no-deps`, `cargo fmt --all --check`, and `cargo clippy --workspace --all-targets -- -D warnings`.
 
 ## See Also
 

@@ -32,13 +32,17 @@ let copy = point.clone();  // Error: Clone not implemented
 ## Good
 
 ```rust
+use std::collections::HashMap;
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Point {
     pub x: f64,
     pub y: f64,
 }
 
-// Now everything works
+let point = Point { x: 1.0, y: 2.0 };
+let point1 = point;
+let point2 = point;
 println!("{:?}", point);
 assert_eq!(point1, point2);
 let copy = point;  // Copy, not just Clone
@@ -47,7 +51,7 @@ let copy = point;  // Copy, not just Clone
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct UserId(u64);
 
-let mut map: HashMap<UserId, User> = HashMap::new();
+let mut map: HashMap<UserId, String> = HashMap::new();
 ```
 
 ## Trait Derivation Guide
@@ -93,6 +97,9 @@ pub enum ParseError {
 ## Manual Implementations
 
 ```rust
+use std::fmt::{self, Debug};
+use std::hash::{Hash, Hasher};
+
 // When derive doesn't do what you want
 struct CaseInsensitiveString(String);
 
@@ -162,6 +169,25 @@ meaningfully; it need not perform hidden I/O or manufacture invalid state.
 - [Microsoft: M-SERVICES-CLONE](https://microsoft.github.io/rust-guidelines/guidelines/libs/ux/index.html#M-SERVICES-CLONE) - shared service handles when required
 - [Google Rust Style Guide](https://google.github.io/styleguide/rustguide.html) - standard traits in context
 - [Rust API Guidelines: interoperability](https://rust-lang.github.io/api-guidelines/interoperability.html)
+
+## Verified Example
+
+<!-- verify: compile -->
+```rust
+use std::collections::HashMap;
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct Point { x: f64, y: f64 }
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+struct UserId(u64);
+fn main() {
+    let point = Point { x: 1.0, y: 2.0 };
+    assert_eq!(point, point);
+    assert!(format!("{point:?}").contains("Point"));
+    let users = HashMap::from([(UserId(7), "Ada")]);
+    assert_eq!(users.get(&UserId(7)), Some(&"Ada"));
+}
+```
 
 ## See Also
 

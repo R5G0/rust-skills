@@ -29,32 +29,24 @@ pub struct Session { /* ... */ }
 
 ## Good
 
+<!-- verify: compile -->
 ```rust
-//! Authentication and authorization utilities.
+//! Application configuration kept in a single module.
 //!
-//! This module provides multiple authentication strategies:
-//!
-//! - [`JwtAuth`] - JSON Web Token based authentication
-//! - [`SessionAuth`] - Cookie-based session authentication
-//! - [`ApiKeyAuth`] - API key authentication for services
-//!
-//! # Examples
-//!
-//! ```
-//! use my_crate::auth::{JwtAuth, Authenticator};
-//!
-//! let auth = JwtAuth::new("secret-key");
-//! let token = auth.generate_token(&user)?;
-//! ```
-//!
-//! # Feature Flags
-//!
-//! - `jwt` - Enables JWT authentication (enabled by default)
-//! - `sessions` - Enables session-based authentication
+//! [`Config::new`] accepts either a borrowed name or an owned [`String`].
 
-use std::collections::HashMap;
+/// Input supplied to the application.
+pub struct Config {
+    /// Name to greet.
+    pub name: String,
+}
 
-pub struct Session { /* ... */ }
+impl Config {
+    /// Construct a configuration with an owned name.
+    pub fn new(name: impl Into<String>) -> Self {
+        Self { name: name.into() }
+    }
+}
 ```
 
 ## Where to Use Inner Docs
@@ -115,6 +107,14 @@ Sources: [Microsoft M-MODULE-DOCS](https://microsoft.github.io/rust-guidelines/g
 3. **Examples** - How to use it
 4. **Feature flags** - Optional functionality
 5. **See Also** - Related modules
+
+## Verified Project
+
+<!-- verify: fixture=layouts -->
+
+See the real [validation fixture source](../checks/fixtures/layouts/flat-tool/src/config.rs). The real config.rs begins with an inner module doc comment. Its module and public Config documentation are checked by cargo doc --workspace --no-deps.
+
+Run from `checks/fixtures/layouts` with Rust 1.97.1: `cargo test --workspace --all-targets`, `cargo test --workspace --doc`, `cargo doc --workspace --no-deps`, `cargo fmt --all --check`, and `cargo clippy --workspace --all-targets -- -D warnings`.
 
 ## See Also
 

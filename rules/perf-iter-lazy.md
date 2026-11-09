@@ -116,6 +116,12 @@ let total: i64 = data.iter()
     .sum();
 ```
 
+## Verified Project
+
+<!-- verify: fixture=performance -->
+
+See the [executable implementations, regression tests, and benchmarks](../perf-validation/README.md) for this rule and its recorded measurement limits.
+
 ## See Also
 
 For reusable library APIs, consider returning `impl Iterator<Item = T>` so callers can short-circuit or choose their own collection. Return `Vec<T>` when ownership, random indexing, an existing vector, or typical caller behavior makes it the clearer contract. A lazy iterator also defers computation, side effects, and errors until consumption; choose that behavior deliberately.

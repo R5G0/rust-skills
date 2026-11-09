@@ -32,10 +32,10 @@ if !(x == 0) { }  // Use: if x != 0 { }
 match option {
     Some(x) => Some(x + 1),
     None => None,
-}  // Use: option.map(|x| x + 1)
+};  // Use: option.map(|x| x + 1)
 
 // WARN: Unnecessary filter before count
-iter.filter(|x| predicate(x)).count()  // Could simplify if only counting
+iter.filter(|x| predicate(x)).count();  // Evaluate the actual predicate; filtering is required for a conditional count
 ```
 
 ### Redundant Operations
@@ -48,7 +48,7 @@ let s = format!("literal");  // Use: "literal".to_string() or just "literal"
 match result {
     Ok(ok) => Ok(ok),
     Err(err) => Err(err),
-}  // Just use: result
+};  // Just use: result
 
 // WARN: Box::new in return position
 fn make_error() -> Box<dyn Error> {
@@ -60,7 +60,7 @@ fn make_error() -> Box<dyn Error> {
 
 ```rust
 // WARN: bind_instead_of_map
-option.and_then(|x| Some(x + 1))  // Use: option.map(|x| x + 1)
+option.and_then(|x| Some(x + 1));  // Use: option.map(|x| x + 1)
 
 // WARN: clone_on_copy
 let y = x.clone();  // Where x is Copy type, just use: let y = x;
@@ -92,7 +92,7 @@ if condition {
 
 ```rust
 // Before (complexity warnings)
-fn find_positive(nums: &[i32]) -> Option<i32> {
+fn find_positive_before(nums: &[i32]) -> Option<i32> {
     let filtered: Vec<_> = nums.iter()
         .cloned()
         .filter(|x| *x > 0)

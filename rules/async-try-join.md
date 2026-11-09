@@ -27,35 +27,30 @@ async fn fetch_all() -> (Result<A>, Result<B>, Result<C>) {
 
 ## Good
 
+<!-- verify: compile -->
 ```rust
-use tokio::try_join;
-
-async fn fetch_all() -> Result<(A, B, C)> {
-    // Concurrent AND fail-fast
-    let (a, b, c) = try_join!(
-        fetch_a(),
-        fetch_b(),
-        fetch_c(),
-    )?;
-    
-    Ok((a, b, c))
+async fn parse_number(input: &str) -> Result<u32, std::num::ParseIntError> {
+    tokio::task::yield_now().await;
+    input.parse()
 }
 
-// For dynamic collections
-use futures::future::try_join_all;
-
-async fn fetch_users(ids: &[u64]) -> Result<Vec<User>> {
-    let futures: Vec<_> = ids.iter()
-        .map(|id| fetch_user(*id))
-        .collect();
-    
-    try_join_all(futures).await
+#[tokio::main(flavor = "current_thread")]
+async fn main() -> Result<(), std::num::ParseIntError> {
+    let pair = tokio::try_join!(parse_number("20"), parse_number("22"))?;
+    assert_eq!(pair, (20, 22));
+    assert!(tokio::try_join!(parse_number("invalid"), parse_number("22")).is_err());
+    Ok(())
 }
 ```
 
 ## Error Handling Patterns
 
 ```rust
+use anyhow::Result;
+use futures::TryFutureExt;
+use futures::future::try_join_all;
+use tokio::try_join;
+
 // Different error types - need common error type
 async fn mixed_operations() -> Result<(A, B), Error> {
     let (a, b) = try_join!(
@@ -65,7 +60,7 @@ async fn mixed_operations() -> Result<(A, B), Error> {
     Ok((a, b))
 }
 
-// Collect all results, then handle errors
+// Return all values on success; drop the remaining futures on the first error
 async fn all_or_nothing(ids: &[u64]) -> Result<Vec<User>> {
     try_join_all(ids.iter().map(|id| fetch_user(*id))).await
 }
@@ -91,22 +86,25 @@ async fn best_effort(ids: &[u64]) -> Vec<User> {
 ## Cancellation Behavior
 
 ```rust
-// try_join! cancels remaining futures on error
+use anyhow::Result;
+use tokio::try_join;
+
+// try_join! drops its remaining branch futures on error.
 async fn with_cancellation() -> Result<()> {
     // If fetch_a() fails, fetch_b() and fetch_c() are dropped
-    // But "dropped" != "immediately stopped"
-    // They stop at their next .await point
+    // Dropped branch futures are never polled again. Already performed external
+    // effects remain; dropping a separately spawned task handle does not abort it.
     
     try_join!(
         async {
             fetch_a().await?;
             cleanup_a().await;  // May not run if other future fails
-            Ok::<_, Error>(())
+            Ok::<_, anyhow::Error>(())
         },
         async {
             fetch_b().await?;
             cleanup_b().await;  // May not run if other future fails
-            Ok::<_, Error>(())
+            Ok::<_, anyhow::Error>(())
         },
     )?;
     
@@ -118,27 +116,29 @@ async fn with_cancellation() -> Result<()> {
 
 ## With Timeout
 
+The timeout argument must be a future. Wrap the combined operation in an async block; calling `try_join!` directly produces a result after awaiting its branches, which is too late for the outer timeout.
+
 ```rust
+use anyhow::{Context, Result};
 use tokio::time::{timeout, Duration};
 
-async fn fetch_with_timeout() -> Result<(A, B)> {
-    timeout(
-        Duration::from_secs(10),
-        try_join!(fetch_a(), fetch_b())
-    )
-    .await
-    .map_err(|_| Error::Timeout)?
+async fn fetch_a() -> Result<u32> { Ok(20) }
+async fn fetch_b() -> Result<u32> { Ok(22) }
+
+async fn fetch_with_timeout() -> Result<(u32, u32)> {
+    timeout(Duration::from_secs(10), async {
+        tokio::try_join!(fetch_a(), fetch_b())
+    }).await.context("combined operation timed out")?
 }
 
-// Per-operation timeout
-async fn individual_timeouts() -> Result<(A, B)> {
-    try_join!(
-        timeout(Duration::from_secs(5), fetch_a())
-            .map_err(|_| Error::Timeout)
-            .and_then(|r| async { r }),
-        timeout(Duration::from_secs(5), fetch_b())
-            .map_err(|_| Error::Timeout)
-            .and_then(|r| async { r }),
+async fn individual_timeouts() -> Result<(u32, u32)> {
+    tokio::try_join!(
+        async {
+            timeout(Duration::from_secs(5), fetch_a()).await.context("operation a timed out")?
+        },
+        async {
+            timeout(Duration::from_secs(5), fetch_b()).await.context("operation b timed out")?
+        },
     )
 }
 ```
