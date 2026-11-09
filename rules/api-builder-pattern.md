@@ -180,6 +180,16 @@ impl MyBuilder {
 }
 ```
 
+## Construction Contracts
+
+Group parameters that already form a meaningful domain value, and keep the order of repeated conceptual parameters consistent across related functions. Named fields and validated types reduce mix-ups without requiring an arbitrary parameter-count threshold or a generic dependency container.
+
+For a fallible builder, validate cross-field constraints in build and return one Result. Setters can remain simple configuration steps; an input type may validate its own invariant before it reaches the builder. Early failure remains appropriate when a setter performs a real fallible operation or must reject an unsafe state immediately.
+
+Choose required constructor parameters, typestate, or final validation according to the actual contract. Do not add a builder solely because a fixed number of options was exceeded, or change a published constructor just to match a naming preference. Put callbacks near the end where practical, while preserving established APIs that legitimately need multiple callbacks.
+
+Sources: [Microsoft M-INIT-BUILDER](https://microsoft.github.io/rust-guidelines/guidelines/libs/ux/index.html#M-INIT-BUILDER), [M-INIT-CASCADED](https://microsoft.github.io/rust-guidelines/guidelines/libs/ux/index.html#M-INIT-CASCADED), [M-BUILD-RESULT](https://microsoft.github.io/rust-guidelines/guidelines/libs/resilience/index.html#M-BUILD-RESULT), [M-PARAMETER-CONSISTENCY](https://microsoft.github.io/rust-guidelines/guidelines/libs/ux/index.html#M-PARAMETER-CONSISTENCY).
+
 ## See Also
 
 - [api-builder-must-use](api-builder-must-use.md) - Add #[must_use] to builders

@@ -1,7 +1,7 @@
 ---
 name: rust-skills
 description: >
-  Comprehensive Rust coding guidelines with 281 rules across 26 categories.
+  Comprehensive Rust coding guidelines with 284 rules across 26 categories.
   Use when writing, reviewing, or refactoring Rust code. Covers ownership,
   error handling, async patterns, concurrency, unsafe code, API design, memory
   optimization, performance, numeric safety, conversions, serde, pattern
@@ -10,7 +10,7 @@ description: >
 license: MIT
 metadata:
   author: leonardomso
-  version: "1.5.1+fork.2"
+  version: "1.5.1+fork.3"
   sources:
     - Rust API Guidelines
     - Rust Performance Book
@@ -23,7 +23,7 @@ metadata:
 
 # Rust Best Practices
 
-Comprehensive guide for writing high-quality, idiomatic, and highly optimized Rust code. Contains 281 rules across 26 categories, prioritized by impact to guide LLMs in code generation and refactoring. Examples checked with Rust 1.97.1 (2024 edition); respect each project's MSRV.
+Comprehensive guide for writing high-quality, idiomatic, and highly optimized Rust code. Contains 284 rules across 26 categories, prioritized by impact to guide LLMs in code generation and refactoring. Examples checked with Rust 1.97.1 (2024 edition); respect each project's MSRV.
 
 ## When to Apply
 
@@ -45,7 +45,7 @@ Reference these guidelines when:
 | 2 | Error Handling | CRITICAL | `err-` | 12 |
 | 3 | Memory Optimization | CRITICAL | `mem-` | 17 |
 | 4 | Unsafe Code | CRITICAL | `unsafe-` | 9 |
-| 5 | API Design | HIGH | `api-` | 19 |
+| 5 | API Design | HIGH | `api-` | 22 |
 | 6 | Async/Await | HIGH | `async-` | 20 |
 | 7 | Concurrency | HIGH | `conc-` | 5 |
 | 8 | Compiler Optimization | HIGH | `opt-` | 12 |
@@ -155,6 +155,9 @@ Reference these guidelines when:
 - [`api-operator-overload`](rules/api-operator-overload.md) - Overload operators only when the semantics are natural and unsurprising
 - [`api-public-dependencies`](rules/api-public-dependencies.md) - Treat third-party types in public APIs as deliberate compatibility commitments
 - [`api-range-bounds`](rules/api-range-bounds.md) - Use standard range types for interval APIs and validate endpoint conversions
+- [`api-explicit-state`](rules/api-explicit-state.md) - Give correctness-sensitive shared state an explicit owner and identity scope
+- [`api-io-boundary`](rules/api-io-boundary.md) - Accept the I/O capability a parser needs and bound externally controlled input
+- [`api-native-handles`](rules/api-native-handles.md) - Distinguish borrowing, transferring, and adopting ownership of native handles
 
 ### 6. Async/Await (HIGH)
 
@@ -485,7 +488,7 @@ This skill provides rule identifiers for quick reference. When generating or rev
 
 This fork applies reviewed upstream fixes and selected portable Google and Microsoft guidance. Read [references/source-review.md](references/source-review.md) for source revisions and Google mappings, and [references/microsoft-guidelines.md](references/microsoft-guidelines.md) for Microsoft applicability and exceptions.
 
-This skill is an independent synthesis of official Rust guidance, well-known books, and patterns from widely-used crates. It is not affiliated with or endorsed by the Rust project or any crate author; the text and code examples are original.
+The inherited collection comes from [leonardomso/rust-skills at fd2a861](https://github.com/leonardomso/rust-skills/tree/fd2a861ab0406a4ac536a55274d14ea6fd1ca9c9). Upstream lists the sources below; this fork records its reviewed source revisions separately. These are community recommendations, not official Rust requirements. See [issue coverage](references/upstream-issues.md) for the concrete resolutions tracked in this fork.
 
 **Official Rust documentation**
 - [The Rust Reference](https://doc.rust-lang.org/reference/)
@@ -507,7 +510,7 @@ This skill is an independent synthesis of official Rust guidance, well-known boo
 - [Clippy lint documentation](https://rust-lang.github.io/rust-clippy/)
 - [Miri](https://github.com/rust-lang/miri)
 
-**Real-world codebases studied for idioms**
+**Codebases listed as references by upstream**
 - ripgrep, tokio, serde, clap, polars, axum, cargo, hyper, bevy, rayon, and dtolnay's crates (thiserror, anyhow, syn)
 
 This project is MIT-licensed. Referenced upstream materials remain under their own licenses (the official Rust docs and API Guidelines are dual MIT / Apache-2.0).

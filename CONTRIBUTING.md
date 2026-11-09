@@ -68,16 +68,20 @@ Run the same checks CI runs:
 python3 checks/validate.py
 python3 checks/gen_index.py --check
 
-# compile-check the examples (Rust >= 1.95)
+# compile-check the examples on the pinned Rust 1.97.1 toolchain
 cd checks
 python3 gen.py
-cargo check --examples --keep-going --message-format=json > check.json
+cargo check --locked --examples --target x86_64-unknown-linux-gnu --keep-going --message-format=json > check.json
 python3 analyze.py check.json --check-baseline baseline.txt
 ```
 
 If the compile gate reports a real bug, fix the example. If you intentionally
 added a new fragment-style snippet, refresh the baseline (see
 `checks/README.md`).
+
+Issue-driven changes should update [the issue coverage record](references/upstream-issues.md)
+with the requirement, affected files, and meaningful validation. Keep upstream
+issue state separate from whether this fork contains its fix.
 
 ## Style
 

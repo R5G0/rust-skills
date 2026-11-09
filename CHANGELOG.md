@@ -6,6 +6,16 @@ semantic versioning for the rule set.
 
 ## [Unreleased] — R5G0 fork
 
+### Issue completion
+- Account for all six upstream issues (#1, #3, #6, #8, #9, #10) in one
+  requirement-to-resolution record, with an independent recheck of #6/#8/#10.
+- Resolve the Node 18 installer report with exact CLI prerequisites,
+  missing-styleText diagnostics, and a verified complete Git-only path.
+- Clarify inherited authorship/source provenance and reconcile every current
+  Microsoft guideline against its pinned published inventory.
+- Add focused library guidance for I/O boundaries, native-handle ownership and
+  explicit instance state; correct related constants, builders, macros and telemetry.
+
 ### Fixed
 - Apply upstream issues #6, #8 and #10 and the dyn-dispatch correction in PR #7.
 - Correct path coercions, clone/Copy costs, Cow operations, Send/Sync bounds,
@@ -16,15 +26,16 @@ semantic versioning for the rule set.
   atomic ordering and conditional performance guidance.
 
 ### Added
-- Eight focused Microsoft-inspired rules: lint expectations, public dependencies,
+- Eleven focused Microsoft-inspired rules: lint expectations, public dependencies,
   checked range APIs, FFI boundaries, panic safety, cooperative CPU work, future
-  size and idiomatic ports; documented conditional policies and source revision.
+  size, idiomatic ports, I/O boundaries, native handles and explicit state;
+  documented conditional policies and source revision.
 - Six reviewed Rust 1.95–1.97 rules from PR #5, with additional corrections.
 - Two portable Google-inspired rules: named fields and UTF-8 boundaries.
 - A source review mapping adopted guidance and excluded project-specific policies.
 
 ### Changed
-- 281 rules across 26 categories; metadata version 1.5.1+fork.2.
+- 284 rules across 26 categories; metadata version 1.5.1+fork.3.
 - README category counts are generated from rule files with the skill index.
 - Pin the compile harness to Rust 1.97.1, add async-trait, require complete
   Cargo diagnostics and exact suspect-baseline parity.

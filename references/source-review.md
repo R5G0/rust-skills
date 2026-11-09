@@ -1,8 +1,21 @@
 # Source review for this fork
 
-Reviewed on 2026-11-10. This is a selective maintenance pass, not a claim that
-every upstream example or every external guideline was independently audited.
+Reviewed on 2026-11-10. All six upstream issues are tracked in
+[upstream-issues.md](upstream-issues.md). This is not a claim that every inherited
+example or every external guideline clause was independently reproduced.
 Repository conventions and a project's MSRV take precedence over generic advice.
+
+## Provenance
+
+The inherited 265-rule corpus is the content of upstream commit
+[`fd2a861ab0406a4ac536a55274d14ea6fd1ca9c9`](https://github.com/leonardomso/rust-skills/tree/fd2a861ab0406a4ac536a55274d14ea6fd1ca9c9).
+The [upstream README at that revision](https://github.com/leonardomso/rust-skills/blob/fd2a861ab0406a4ac536a55274d14ea6fd1ca9c9/README.md)
+declares official Rust documentation, books and production crates as sources.
+That declared bibliography is distinct from this fork's documented source
+review. Authorship and history are recorded by the upstream Git history; a
+source list alone does not establish that every example is original, compiled,
+or independently benchmarked. Fork corrections and additions cite the primary
+documents that support their behavior and conditions.
 
 ## Upstream issues and pull requests
 
@@ -17,8 +30,9 @@ Base: leonardomso/rust-skills at
 | [PR #5](https://github.com/leonardomso/rust-skills/pull/5) at `ce04df8988405e6b4ee25be3d32db1e31c1f6d83` | Closed, unmerged | Adopt six focused rules and relevant Rust 1.95–1.97 updates; pin example checking to 1.97.1 |
 | [PR #4](https://github.com/leonardomso/rust-skills/pull/4) at `791a2478cbf00f28d943bd18a2dbcbb5b008574b` | Closed, unmerged | Use targeted correctness ideas such as exact compile-baseline parity and conditional optimization guidance; do not wholesale import its 343-rule corpus or source-audit claims |
 | [Issue #3](https://github.com/leonardomso/rust-skills/issues/3) | Open | Adopt selected Microsoft guidance with explicit context and compatibility limits; the Zero To Production book/production corpus from PR #4 remains outside this pass |
-| [Issue #9](https://github.com/leonardomso/rust-skills/issues/9) | Open | Node 18 installer failure belongs to the external installer; use a supported Node LTS for installation |
-| [PR #2](https://github.com/leonardomso/rust-skills/pull/2), [Issue #1](https://github.com/leonardomso/rust-skills/issues/1) | Merged / source inquiry | Already represented by the base corpus and attribution |
+| [Issue #9](https://github.com/leonardomso/rust-skills/issues/9) | Open upstream; addressed in fork | README documents the precise Node/runtime prerequisite, missing-styleText diagnosis, and complete Git-only installation |
+| [Issue #1](https://github.com/leonardomso/rust-skills/issues/1) | Open upstream; addressed in fork | README and this provenance section identify the inherited corpus, upstream bibliography, and the fork's independently reviewed sources |
+| [PR #2](https://github.com/leonardomso/rust-skills/pull/2) | Merged upstream | Already represented by the inherited base corpus |
 
 The PR #5 material was corrected during review too: atomic update closures use
 lazy `then` to avoid eager overflow, bit helpers distinguish unsigned APIs,
@@ -63,12 +77,12 @@ documentation and pattern matching) is retained without duplicate rules.
 
 The requested Microsoft pass uses official v2026.6 at
 `9585e288d21d2da994a0550c926a09b62d79f8bd`. The
-[Microsoft mapping](microsoft-guidelines.md) records adopted rules, existing
+[Microsoft mapping](microsoft-guidelines.md) records all 90 source guideline dispositions, adopted rules, existing
 coverage and recommendations that remain conditional. It covers lint exceptions,
 public dependency contracts, interval APIs, testability, builds/features,
 FFI/panic safety, async work/storage, documentation and macro compatibility.
 
-This is a fresh selective review of the current official source, not an import
+This is a full inventory reconciliation with contextual adoption, not an import
 of PR #4's older coverage ledger or its whole-corpus validation claims.
 
 ## Google policies not generalized

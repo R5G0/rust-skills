@@ -77,6 +77,16 @@ fn main() {
 - Compile out verbose levels in release with Cargo features: `tracing = { version = "0.1", features = ["max_level_debug", "release_max_level_info"] }`.
 - Prefer `try_from_default_env()` with a fallback string over `from_default_env()` so the binary still starts when `RUST_LOG` is unset or malformed.
 
+## Hot-Path Event Budgets
+
+Measure telemetry with the intended production subscriber and enabled diagnostic levels. Even allocation-free fields cost work when emitted for every inner-loop item; aggregate or sample where individual events are unnecessary, and retain the events required for the product's diagnostic contract.
+
+Prepare expensive diagnostic-only data after an appropriate enabled check rather than formatting it unconditionally before the event. Use the backend's actual field API: format_args-style formatting is not the same as allocating a String with format, and literal double-brace placeholders do not automatically acquire special interpolation in tracing.
+
+Library code should emit events through the chosen facade and let the application own filtering. Do not globally disable useful diagnostics or change build-level filters solely to make a benchmark faster. Ordinary CLI output remains a valid user interface.
+
+Sources: [Microsoft M-LOG-OVERHEAD](https://microsoft.github.io/rust-guidelines/guidelines/performance/index.html#M-LOG-OVERHEAD), [M-LOG-STRUCTURED](https://microsoft.github.io/rust-guidelines/guidelines/universal/index.html#M-LOG-STRUCTURED), [M-LOG-NOT-PRINT](https://microsoft.github.io/rust-guidelines/guidelines/libs/resilience/index.html#M-LOG-NOT-PRINT).
+
 ## See Also
 
 - [obs-tracing-over-log](obs-tracing-over-log.md) - foundational `tracing` setup
